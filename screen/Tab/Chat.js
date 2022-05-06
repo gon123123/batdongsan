@@ -1,15 +1,103 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { StyleSheet, Text, View, StatusBar, TouchableOpacity, Modal, TextInput, TouchableWithoutFeedback, Keyboard, Image, ScrollView, Dimensions, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import girl from '../../assets/girl.jpg'
 
+
+import firebase, { initializeApp } from "firebase/app";
+import "firebase/auth";
+import "firebase/database";
+import "firebase/firestore";
+import "firebase/functions";
+import "firebase/storage";
+
 const windowWidth = Dimensions.get('window').width;
 const windowHeight = Dimensions.get('window').height;
-export default function Chat({ navigation }) {
-    // for
+export default function Chat({ route, navigation }) {
+    var params = route.params.params;
     const [modalVisible, setModalVisible] = useState(false);
     const [modalSearch, setModalSearch] = useState(false);
     const [position, setPosition] = useState('88.7%');
+    const [listFriend, setListFriend] = useState(null);
+    const [nameFriend, setNameFriend] = useState('');
+    const [imageFriend, setImageFriend] = useState('');
+    const [listMessage, setListMessage] = useState([]);
+    const [dataUser, setDataUser] = useState({
+        id: params.id,
+        name: params.name,
+        email: params.email,
+        password: params.password,
+        status: params.status,
+        avatar: params.avatar,
+    });
+    //mess
+    const [textMessage, setTextMessage] = useState('');
+    const [idMessageAll, setIdMessageAll] = useState('');
+    const [imageUserMe, setImageUserMe] = useState(null);
+    useEffect(() => {
+        const firebaseConfig = {
+            apiKey: "AIzaSyAfYIJrNCDdzLG4BZa5gDPCBAaoKWYAn6c",
+            authDomain: "batdongsan-41470.firebaseapp.com",
+            databaseURL: "https://batdongsan-41470-default-rtdb.firebaseio.com",
+            projectId: "batdongsan-41470",
+            storageBucket: "batdongsan-41470.appspot.com",
+            messagingSenderId: "438805796856",
+            appId: "1:438805796856:web:3246ae37f20570a037a80d",
+            measurementId: "G-3NEQFEHQ1D"
+        };
+        if (!firebase.apps.length) {
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+            console.log('ket noi thanh cong');
+        }
+        getListFriend();
+    }, []);
+    function getListFriend() {
+        firebase.database().ref('users/' + dataUser.id + '/listFriend').on('value', function (snapshot) {
+            var childData = snapshot.val();
+            // console.log(childData.length);
+            setListFriend(childData);
+        });
+        // lay image cua user
+        let imageUsers = {}
+        firebase.database().ref('users/' + dataUser.id + '/avatar').on('value', function (snapshot) {
+            imageUsers = snapshot.val();
+            setImageUserMe({
+                image: imageUsers.image,
+                type: imageUsers.type,
+            });
+        })
+    }
+    function loadMess(idMess) {
+        firebase.database().ref('listMessage/' + idMess).on('value', function (snapshot) {
+            var childData = snapshot.val();
+            console.log(childData);
+            setListMessage(childData.message);
+        });
+    }
+    function sendMessage(prText) {
+        console.log('da gui ...');
+        var date = new Date();
+        var time = date.getHours() + ':' + date.getMinutes();
+        let objectMess = {
+            idUser: dataUser.id,
+            mess: prText,
+            time: time,
+        };
+        console.log(idMessageAll);
+        let mess = [];
+        firebase.database().ref('listMessage/' + idMessageAll).on('value', function (snapshot) {
+            mess = snapshot.val();
+        });
+        let newMess = [];
+        newMess = mess.message;
+        newMess.push(objectMess);
+        console.log(newMess);
+        firebase.database().ref('listMessage/' + idMessageAll).set({
+            message: newMess
+        });
+        setTextMessage('');
+    }
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={styles.container}>
@@ -51,96 +139,104 @@ export default function Chat({ navigation }) {
                         </TouchableWithoutFeedback>
                     </View>
                 </Modal>
-                {/* flatList user friend */}
+                {/* list user friend */}
                 <ScrollView>
-                    <TouchableOpacity style={styles.list} onPress={() => setModalVisible(true)}>
-                        <View style={styles.listLeft}>
-                            <Image style={styles.imageUser} source={girl}></Image>
-                            <View style={styles.statusUser}></View>
-                        </View>
-                        <View style={styles.listRight}>
-                            <Text style={styles.textName}>Minh Tuan</Text>
-                            <Text style={styles.textMessage} numberOfLines={1}>Hom nay troi kha la dep Hom nay troi kha la depHom nay troi kha la dep</Text>
-                        </View>
-                        <TouchableOpacity>
-                            <Ionicons name="trash" size={30} color='#FD9F42' style={styles.IconDelete} />
-                        </TouchableOpacity>
-                    </TouchableOpacity>
-                </ScrollView>
-                <Text>Chat</Text>
-                {/* for */}
-                <TouchableOpacity onPress={() => setModalVisible(true)}>
-                    <Text>bat</Text>
-                </TouchableOpacity>
-                {/* Chat */}
-                <Modal
-                    animationType="fade"
-                    transparent={true}
-                    visible={modalVisible}
-                >
-                    <SafeAreaView>
-                        <View style={styles.modalLocation}>
-                            <View style={styles.modalBottom}>
-                                <TouchableOpacity onPress={() => setModalVisible(false)} >
-                                    <Text style={styles.chevron}>‹</Text>
+                    {listFriend == null
+                        ? <Text style={{ textAlign: 'center', color: 'tomato' }}>no friends</Text>
+                        : listFriend.map((item, index) => {
+                            return <View key={index}>
+                                <TouchableOpacity style={styles.list} onPress={() => {
+                                    loadMess(item.idMess)
+                                    setIdMessageAll(item.idMess),
+                                        setNameFriend(item.nameUserFriend),
+                                        setImageFriend(item.imageUserFriend),
+                                        setModalVisible(true)
+                                }}>
+                                    <View style={styles.listLeft}>
+                                        {
+                                            (item.imageUserFriend).charAt(5) == ':'
+                                                ? <Image source={{ uri: item.imageUserFriend }} style={styles.imageUser}></Image>
+                                                : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + item.imageUserFriend }} style={styles.imageUser} />
+                                        }
+                                        {/* <View style={[styles.statusUser, {backgroundColor: 'red'}]}></View> */}
+                                    </View>
+                                    <View style={styles.listRight}>
+                                        <Text style={styles.textName}>{item.nameUserFriend}</Text>
+                                        {/* <Text style={styles.textMessage} numberOfLines={1}>Hom nay troi kha la dep Hom nay troi kha la depHom nay troi kha la dep</Text> */}
+                                    </View>
+                                    <TouchableOpacity>
+                                        <Ionicons name="trash" size={30} color='#FD9F42' style={styles.IconDelete} />
+                                    </TouchableOpacity>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={{ flexDirection: 'row' }}>
-                                    <Image source={girl} style={styles.image}></Image>
-                                    <Text style={styles.textOk}>Minh Tai</Text>
-                                </TouchableOpacity>
-                            </View>
-                            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                                <View style={[styles.boxMessage, { height: position }]}>
-                                    {/* so khớp id nếu trùng thì cho nằm bên phải sai thì nằm bên trái */}
-                                    {/* lấy ảnh của nguoi dung */}
-                                    {/* <FlatList
-                                    data={DATA}
-                                    renderItem={({ item }) =>
-                                    (
-                                        <View style={styles.messageBlock}>
-                                            <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-                                                <Image source={girl} style={styles.messageBlock_image}></Image>
-                                                <View style={styles.message}>
-                                                    <Text style={styles.textMessageBox}>ban khoe khong</Text>
-                                                    <Text style={styles.textTime}>10:30</Text>
-                                                </View>
+                                <Modal
+                                    animationType="fade"
+                                    transparent={true}
+                                    visible={modalVisible}
+                                >
+                                    {/* Chat */}
+                                    <SafeAreaView>
+                                        <View style={styles.modalLocation}>
+                                            <View style={styles.modalBottom}>
+                                                <TouchableOpacity onPress={() => setModalVisible(false)} >
+                                                    <Text style={styles.chevron}>‹</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity style={{ flexDirection: 'row' }}>
+                                                    {
+                                                        (imageFriend).charAt(5) == ':'
+                                                            ? <Image source={{ uri: imageFriend }} style={styles.image}></Image>
+                                                            : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + imageFriend }} style={styles.image} />
+                                                    }
+                                                    <Text style={styles.textOk}>{nameFriend}</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                            {/* <TouchableWithoutFeedback onPress={Keyboard.dismiss}> */}
+                                            <View style={[styles.boxMessage, { height: position }]} onPress={Keyboard.dismiss}>
+                                                {listMessage.map((mess, indexMess) => {
+                                                    return mess.idUser == dataUser.id
+                                                        ? <View key={indexMess} style={[styles.messageBlock, { flexDirection: 'row-reverse' }]}>
+                                                            {(imageUserMe.image).charAt(5) == ':'
+                                                                ? <Image source={{ uri: imageUserMe.image }} style={styles.messageBlock_image}></Image>
+                                                                : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + imageUserMe.image }} style={styles.messageBlock_image} />
+                                                            }
+                                                            <View style={styles.message}>
+                                                                <Text style={styles.textMessageBox}>{mess.mess}</Text>
+                                                                <Text style={styles.textTime}>{mess.time}</Text>
+                                                            </View>
+                                                        </View>
+                                                        : <View key={indexMess} style={[styles.messageBlock, { flexDirection: 'row' }]}>
+                                                            {
+                                                                (imageFriend).charAt(5) == ':'
+                                                                    ? <Image source={{ uri: imageFriend }} style={styles.messageBlock_image}></Image>
+                                                                    : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + imageFriend }} style={styles.messageBlock_image} />
+                                                            }
+                                                            <View style={styles.message}>
+                                                                <Text style={styles.textMessageBox}>{mess.mess}</Text>
+                                                                <Text style={styles.textTime}>{mess.time}</Text>
+                                                            </View>
+                                                        </View>
+                                                })}
+                                            </View>
+                                            {/* </TouchableWithoutFeedback> */}
+                                            <View style={styles.sendMessage}>
+                                                <Ionicons name='image-outline' style={styles.sendMessageImage} />
+                                                <TextInput style={styles.textInputMessage}
+                                                    onFocus={() => setPosition('81.2%')}
+                                                    onBlur={() => setPosition('88.7%')}
+                                                    onChangeText={(text) => setTextMessage(text)}
+                                                    value={textMessage}
+                                                ></TextInput>
+                                                <TouchableOpacity onPress={() => sendMessage(textMessage)}>
+                                                    <Ionicons name='send' style={styles.sendMessageImage} />
+                                                </TouchableOpacity>
                                             </View>
                                         </View>
-                                    )
-                                    }
-                                    keyExtractor={item => item.id}
-                                /> */}
-                                    <View style={[styles.messageBlock, { flexDirection: 'row' }]}>
-                                        <Image source={girl} style={styles.messageBlock_image}></Image>
-                                        <View style={styles.message}>
-                                            <Text style={styles.textMessageBox}>ban khoe khongban khoe khongban khoe khongban khoe khong</Text>
-                                            <Text style={styles.textTime}>10:30</Text>
-                                        </View>
-                                    </View>
-                                    <View style={[styles.messageBlock, { flexDirection: 'row-reverse' }]}>
-                                        <Image source={girl} style={styles.messageBlock_image}></Image>
-                                        <View style={styles.message}>
-                                            <Text style={styles.textMessageBox}>ban khoe khongban khoe khongban khoe khongban khoe khong</Text>
-                                            <Text style={styles.textTime}>10:30</Text>
-                                        </View>
-                                    </View>
-                                    <View style={[styles.messageBlock, { flexDirection: 'row' }]}>
-                                        <Image source={girl} style={styles.messageBlock_image}></Image>
-                                        <View style={styles.message}>
-                                            <Text style={styles.textMessageBox}>ban khoe khongban khoe khongban khoe khongban khoe khong</Text>
-                                            <Text style={styles.textTime}>10:30</Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            </TouchableWithoutFeedback>
-                            <View style={styles.sendMessage}>
-                                <Ionicons name='image-outline' style={styles.sendMessageImage} />
-                                <TextInput style={styles.textInputMessage} onFocus={() => setPosition('81.2%')} onBlur={() => setPosition('88.7%')}></TextInput>
-                                <Ionicons name='send' style={styles.sendMessageImage} />
+                                    </SafeAreaView>
+                                </Modal>
                             </View>
-                        </View>
-                    </SafeAreaView>
-                </Modal>
+                        })
+                    }
+                </ScrollView>
+
             </View>
         </TouchableWithoutFeedback>
     )
@@ -240,17 +336,17 @@ const styles = StyleSheet.create({
         borderRadius: 60 / 2,
         position: 'relative',
     },
-    statusUser: {
-        width: 15,
-        height: 15,
-        borderRadius: 15 / 2,
-        backgroundColor: '#3BFE1C',
-        borderWidth: 2,
-        borderColor: '#FFFFFF',
-        position: 'absolute',
-        bottom: 2,
-        right: 0
-    },
+    // statusUser: {
+    //     width: 15,
+    //     height: 15,
+    //     borderRadius: 15 / 2,
+    //     backgroundColor: '#3BFE1C',
+    //     borderWidth: 2,
+    //     borderColor: '#FFFFFF',
+    //     position: 'absolute',
+    //     bottom: 2,
+    //     right: 0
+    // },
     listRight: {
         // backgroundColor: 'green',
         justifyContent: 'center',

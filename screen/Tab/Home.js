@@ -38,9 +38,15 @@ export default function Home({ route, navigation }) {
         status: params.status,
         avatar: params.avatar,
     });
-    const [dataUserUpdate, setDataUserUpdate] = useState(null);
+    const [imageUserMe, setImageUserMe] = useState(null);
+    const [nameFriendChat, setNameFriendChat] = useState('');
+    const [listMessage, setListMessage] = useState([]);
+    const [imageUserFriend, setImageUserFriend] = useState('');
+    const [typeImageUserFriend, setTypeImageUserFriend] = useState('');
+    //mess
+    const [textMessage, setTextMessage] = useState('');
+    const [idMessageAll, setIdMessageAll] = useState('');
     useEffect(() => {
-        // const loadData = setTimeout(() => {getDatabase(), clearTimeout(loadData), console.log('chao')}, 500);
         const firebaseConfig = {
             apiKey: "AIzaSyAfYIJrNCDdzLG4BZa5gDPCBAaoKWYAn6c",
             authDomain: "batdongsan-41470.firebaseapp.com",
@@ -79,6 +85,292 @@ export default function Home({ route, navigation }) {
             }
             setDataPost(arrayData);
         });
+        let imageUsers = {}
+        firebase.database().ref('users/' + dataUser.id + '/avatar').on('value', function (snapshot) {
+            imageUsers = snapshot.val();
+            setImageUserMe({
+                image: imageUsers.image,
+                type: imageUsers.type,
+            });
+        })
+    }
+    function kiemTraListFriend(idFriend, imageFriend, nameFriend) {
+        setNameFriendChat(nameFriend);
+        setImageUserFriend(imageFriend);
+        let typeImage = imageFriend.slice(0, 6);
+        if (typeImage == 'https:') {
+            setTypeImageUserFriend('link');
+        } else {
+            setTypeImageUserFriend('base64');
+        }
+        console.log(typeImage);
+        var keyMess = firebase.database().ref().child('users').push().key; // tạo key mess cho 2 người
+        // lay data nguoi dang dung
+        var object1 = {}
+        firebase.database().ref('users/' + dataUser.id).on('value', function (snapshot) {
+            object1 = snapshot.val();
+        })
+        // lay data nguoi chuan bi ket ban
+        var object2 = {}
+        firebase.database().ref('users/' + idFriend).on('value', function (snapshot) {
+            object2 = snapshot.val();
+        })
+        // tao 2 doi tuong 
+        let objFriendYou = {  // dung de add cho nguoi dang dung 
+            idUserFriend: idFriend,
+            idMess: keyMess,
+            nameUserFriend: nameFriend,
+            imageUserFriend: imageFriend,
+        }
+        let arrayYou = [];
+        arrayYou.push(objFriendYou);
+        let objFriendMe = {  // dung de add cho nguoi chuan bi ket ban
+            idUserFriend: dataUser.id,
+            idMess: keyMess,
+            nameUserFriend: dataUser.name,
+            imageUserFriend: imageUserMe.image,
+        }
+        let arrayMe = [];
+        arrayMe.push(objFriendMe);
+        if (object1.listFriend == undefined && object2.listFriend == undefined) {
+            // add data lai cho nguoi dang dung
+            firebase.database().ref('users/' + dataUser.id).set({
+                name: object1.name,
+                email: object1.email,
+                password: object1.password,
+                status: true,
+                avatar: {
+                    type: imageUserMe.type,
+                    image: imageUserMe.image,
+                },
+                listFriend: arrayYou
+            })
+            firebase.database().ref('users/' + idFriend).set({
+                name: object2.name,
+                email: object2.email,
+                password: object2.password,
+                status: true,
+                avatar: {
+                    type: object2.avatar.type,
+                    image: object2.avatar.image,
+                },
+                listFriend: arrayMe
+            })
+            // tin nhan dau tien
+            var date = new Date();
+            var time = date.getHours() + ':' + date.getMinutes();
+            let message = {
+                idUser: dataUser.id,
+                mess: 'HI',
+                time: time,
+            }
+            let arrayMess = [];
+            arrayMess.push(message);
+            //  add message first 
+            firebase.database().ref('listMessage/' + keyMess).set({
+                message: arrayMess
+            });
+            console.log('case 1');
+            setIdMessageAll(keyMess);
+            let mess = [];
+            firebase.database().ref('listMessage/' + keyMess).on('value', function (snapshot) {
+                mess = snapshot.val();
+                setListMessage(mess.message);
+            });
+        } else if (object1.listFriend != undefined && object2.listFriend == undefined) {
+            let listFriendMe = object1.listFriend; // chuan bi add them 1 ban cho nguoi dang dung
+            listFriendMe.push(objFriendYou);
+            console.log(listFriendMe);
+            firebase.database().ref('users/' + dataUser.id).set({
+                name: object1.name,
+                email: object1.email,
+                password: object1.password,
+                status: true,
+                avatar: {
+                    type: imageUserMe.type,
+                    image: imageUserMe.image,
+                },
+                listFriend: listFriendMe
+            });
+            firebase.database().ref('users/' + idFriend).set({
+                name: object2.name,
+                email: object2.email,
+                password: object2.password,
+                status: true,
+                avatar: {
+                    type: object2.avatar.type,
+                    image: object2.avatar.image,
+                },
+                listFriend: arrayMe // ban kia dang add data cua nguoi dang dung
+            });
+            // tin nhan dau tien
+            var date = new Date();
+            var time = date.getHours() + ':' + date.getMinutes()
+            let message = {
+                idUser: dataUser.id,
+                mess: 'HI',
+                time: time,
+            }
+            let arrayMess = [];
+            arrayMess.push(message);
+            firebase.database().ref('listMessage/' + keyMess).set({
+                message: arrayMess
+            });
+            console.log('case 2');
+            setIdMessageAll(keyMess);
+            let mess = [];
+            firebase.database().ref('listMessage/' + keyMess).on('value', function (snapshot) {
+                mess = snapshot.val();
+                setListMessage(mess.message);
+            });
+        } else if (object1.listFriend == undefined && object2.listFriend != undefined) {
+            let listFriendYou = object2.listFriend; // chuan bi add them 1 ban cho nguoi dang bai
+            listFriendYou.push(objFriendMe);
+            console.log(listFriendYou);
+            firebase.database().ref('users/' + dataUser.id).set({
+                name: object1.name,
+                email: object1.email,
+                password: object1.password,
+                status: true,
+                avatar: {
+                    type: imageUserMe.type,
+                    image: imageUserMe.image,
+                },
+                listFriend: arrayYou
+            });
+            firebase.database().ref('users/' + idFriend).set({
+                name: object2.name,
+                email: object2.email,
+                password: object2.password,
+                status: true,
+                avatar: {
+                    type: object2.avatar.type,
+                    image: object2.avatar.image,
+                },
+                listFriend: listFriendYou
+            });
+            // tin nhan dau tien
+            var date = new Date();
+            var time = date.getHours() + ':' + date.getMinutes();
+            let message = {
+                idUser: dataUser.id,
+                mess: 'HI',
+                time: time,
+            }
+            let arrayMess = [];
+            arrayMess.push(message);
+            firebase.database().ref('listMessage/' + keyMess).set({
+                message: arrayMess
+            });
+            setIdMessageAll(keyMess);
+            console.log('case 3');
+            let mess = [];
+            firebase.database().ref('listMessage/' + keyMess).on('value', function (snapshot) {
+                mess = snapshot.val();
+                setListMessage(mess.message);
+            });
+        } else if (object1.listFriend != undefined && object2.listFriend != undefined) {
+            console.log('case 4');
+            let listFriendMe = object1.listFriend;
+            let listFriendYou = object2.listFriend;
+            let len1 = listFriendMe.length;
+            let len2 = listFriendYou.length;
+            let ktID = false;
+            let idMess = '';
+            for (let i = 0; i < len1; i++) {
+                if (listFriendMe[i].idUserFriend == idFriend) {
+                    idMess = listFriendMe[i].idMess;
+                    ktID = true;
+                    break;
+                }
+            }
+            if (ktID) {
+                console.log('co');
+                setIdMessageAll(idMess);
+                console.log(idMessageAll);
+                let mess = [];
+                firebase.database().ref('listMessage/' + idMess).on('value', function (snapshot) {
+                    mess = snapshot.val();
+                    console.log(mess.message);
+                    setListMessage(mess.message);
+                })
+                // console.log(listMessage);
+            } else {
+                console.log('khong');
+                let listFriendMe = object1.listFriend; // chuan bi add them 1 ban cho nguoi dang dung
+                listFriendMe.push(objFriendYou);
+                // console.log(listFriendMe);
+                firebase.database().ref('users/' + dataUser.id).set({
+                    name: object1.name,
+                    email: object1.email,
+                    password: object1.password,
+                    status: true,
+                    avatar: {
+                        type: imageUserMe.type,
+                        image: imageUserMe.image,
+                    },
+                    listFriend: listFriendMe
+                });
+                let listFriendYou = object2.listFriend; // chuan bi add them 1 ban cho nguoi dang bai
+                listFriendYou.push(objFriendYou);
+                // console.log(listFriendYou);
+                firebase.database().ref('users/' + idFriend).set({
+                    name: object2.name,
+                    email: object2.email,
+                    password: object2.password,
+                    status: true,
+                    avatar: {
+                        type: object2.avatar.type,
+                        image: object2.avatar.image,
+                    },
+                    listFriend: listFriendYou
+                });
+                // tin nhan dau tien
+                var date = new Date();
+                var time = date.getHours() + ':' + date.getMinutes();
+                let message = {
+                    idUser: dataUser.id,
+                    mess: 'HI',
+                    time: time,
+                }
+                let arrayMess = [];
+                arrayMess.push(message);
+                firebase.database().ref('listMessage/' + keyMess).set({
+                    message: arrayMess
+                });
+                setIdMessageAll(keyMess);
+                // lay message
+                let mess = [];
+                firebase.database().ref('listMessage/' + keyMess).on('value', function (snapshot) {
+                    mess = snapshot.val();
+                    console.log(mess.message);
+                    setListMessage(mess.message);
+                });
+            }
+        }
+    }
+    function sendMessage(prText) {
+        console.log('da gui ...');
+        var date = new Date();
+        var time = date.getHours() + ':' + date.getMinutes();
+        let objectMess = {
+            idUser: dataUser.id,
+            mess: prText,
+            time: time,
+        };
+        console.log(idMessageAll);
+        let mess = [];
+        firebase.database().ref('listMessage/' + idMessageAll).on('value', function (snapshot) {
+            mess = snapshot.val();
+        });
+        let newMess = [];
+        newMess = mess.message;
+        newMess.push(objectMess);
+        console.log(newMess);
+        firebase.database().ref('listMessage/' + idMessageAll).set({
+            message: newMess
+        });
+        setTextMessage('');
     }
     return (
         <View style={styles.container}>
@@ -101,16 +393,19 @@ export default function Home({ route, navigation }) {
                                         nextButton={<Text style={styles.buttonText}>›</Text>}
                                         prevButton={<Text style={styles.buttonText}>‹</Text>}
                                     >
-                                        <Image resizeMode='cover' source={girl} style={styles.ImagePost}></Image>
-                                        <Image resizeMode='cover' source={girl1} style={styles.ImagePost}></Image>
-                                        <Image resizeMode='cover' source={girl2} style={styles.ImagePost}></Image>
-                                        <Image resizeMode='cover' source={girl3} style={styles.ImagePost}></Image>
+                                        {(item.listImage).map((item2, pos) => {
+                                            return <Image key={pos} source={{ uri: 'data:image/jpeg;base64,' + item2 }} style={styles.ImagePost} />
+                                        })}
                                     </Swiper>
                                 </View>
                                 <View style={styles.description}>
                                     <View style={styles.row1}>
                                         <View style={styles.row1Left}>
-                                            <Image source={girl5} style={styles.imageUser}></Image>
+                                            {
+                                                (item.imageUser).charAt(5) == ':'
+                                                    ? <Image source={{ uri: item.imageUser }} style={styles.imageUser}></Image>
+                                                    : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + item.imageUser }} style={styles.imageUser} />
+                                            }
                                             <Text style={styles.textNameUse}>{item.nameUser}</Text>
                                             <Text style={[styles.textNameUse, { fontWeight: '100', fontStyle: 'italic' }]}>{item.time}</Text>
                                             <TouchableOpacity style={{ marginLeft: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}
@@ -151,11 +446,15 @@ export default function Home({ route, navigation }) {
                                         </View>
                                         <View style={styles.row4Right}>
                                             {item.idUser == dataUser.id
-                                                ? <View style={styles.bottomChat} onPress={() => setModalChat(true)}>
+                                                ? <View style={styles.bottomChat}>
                                                     <Text style={styles.bottomTextChat}>Chat</Text>
                                                     <Ionicons name='chatbubble-outline' style={styles.chatbubble} />
                                                 </View>
-                                                : <TouchableOpacity style={styles.bottomChat} onPress={() => setModalChat(true)}>
+                                                : <TouchableOpacity style={styles.bottomChat} onPress={() => {
+                                                    setModalChat(true),
+                                                        kiemTraListFriend(item.idUser, item.imageUser, item.nameUser)
+                                                        // ,ImageUser()
+                                                }}>
                                                     <Text style={styles.bottomTextChat}>Chat</Text>
                                                     <Ionicons name='chatbubble-outline' style={styles.chatbubble} />
                                                 </TouchableOpacity>
@@ -206,58 +505,53 @@ export default function Home({ route, navigation }) {
                                                 <Text style={styles.chevron}>‹</Text>
                                             </TouchableOpacity>
                                             <TouchableOpacity style={{ flexDirection: 'row' }}>
-                                                <Image source={girl} style={styles.image}></Image>
-                                                <Text style={styles.textOk}>Minh Tai</Text>
+                                                {typeImageUserFriend == 'link'
+                                                    ? <Image source={{ uri: imageUserFriend }} style={styles.image}></Image>
+                                                    : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + imageUserFriend }} style={styles.image} />
+                                                }
+                                                <Text style={styles.textOk}>{nameFriendChat}</Text>
                                             </TouchableOpacity>
                                         </View>
                                         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                                             <View style={[styles.boxMessage, { height: position }]}>
-                                                {/* so khớp id nếu trùng thì cho nằm bên phải sai thì nằm bên trái */}
-                                                {/* lấy ảnh của nguoi dung */}
-                                                {/* <FlatList
-                            data={DATA}
-                            renderItem={({ item }) =>
-                            (
-                                <View style={styles.messageBlock}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-                                        <Image source={girl} style={styles.messageBlock_image}></Image>
-                                        <View style={styles.message}>
-                                            <Text style={styles.textMessageBox}>ban khoe khong</Text>
-                                            <Text style={styles.textTime}>10:30</Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            )
-                            }
-                            keyExtractor={item => item.id}
-                        /> */}
-                                                <View style={[styles.messageBlock, { flexDirection: 'row' }]}>
-                                                    <Image source={girl} style={styles.messageBlock_image}></Image>
-                                                    <View style={styles.message}>
-                                                        <Text style={styles.textMessageBox}>ban khoe khongban khoe khongban khoe khongban khoe khong</Text>
-                                                        <Text style={styles.textTime}>10:30</Text>
-                                                    </View>
-                                                </View>
-                                                <View style={[styles.messageBlock, { flexDirection: 'row-reverse' }]}>
-                                                    <Image source={girl} style={styles.messageBlock_image}></Image>
-                                                    <View style={styles.message}>
-                                                        <Text style={styles.textMessageBox}>ban khoe khongban khoe khongban khoe khongban khoe khong</Text>
-                                                        <Text style={styles.textTime}>10:30</Text>
-                                                    </View>
-                                                </View>
-                                                <View style={[styles.messageBlock, { flexDirection: 'row' }]}>
-                                                    <Image source={girl} style={styles.messageBlock_image}></Image>
-                                                    <View style={styles.message}>
-                                                        <Text style={styles.textMessageBox}>ban khoe khongban khoe khongban khoe khongban khoe khong</Text>
-                                                        <Text style={styles.textTime}>10:30</Text>
-                                                    </View>
-                                                </View>
+                                                <ScrollView>
+                                                    {listMessage.map((mess, indexMess) => {
+                                                        return mess.idUser == dataUser.id
+                                                            ? <View key={indexMess} style={[styles.messageBlock, { flexDirection: 'row-reverse' }]}>
+                                                                {(imageUserMe.image).charAt(5) == ':'
+                                                                    ? <Image source={{ uri: imageUserMe.image }} style={styles.messageBlock_image}></Image>
+                                                                    : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + imageUserMe.image }} style={styles.messageBlock_image} />
+                                                                }
+                                                                <View style={styles.message}>
+                                                                    <Text style={styles.textMessageBox}>{mess.mess}</Text>
+                                                                    <Text style={styles.textTime}>{mess.time}</Text>
+                                                                </View>
+                                                            </View>
+                                                            : <View key={indexMess} style={[styles.messageBlock, { flexDirection: 'row' }]}>
+                                                                {typeImageUserFriend == 'link'
+                                                                    ? <Image source={{ uri: imageUserFriend }} style={styles.messageBlock_image}></Image>
+                                                                    : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + imageUserFriend }} style={styles.messageBlock_image} />
+                                                                }
+                                                                <View style={styles.message}>
+                                                                    <Text style={styles.textMessageBox}>{mess.mess}</Text>
+                                                                    <Text style={styles.textTime}>{mess.time}</Text>
+                                                                </View>
+                                                            </View>
+                                                    })}
+                                                </ScrollView>
                                             </View>
                                         </TouchableWithoutFeedback>
                                         <View style={styles.sendMessage}>
                                             <Ionicons name='image-outline' style={styles.sendMessageImage} />
-                                            <TextInput style={styles.textInputMessage} onFocus={() => setPosition('81.2%')} onBlur={() => setPosition('88.7%')}></TextInput>
-                                            <Ionicons name='send' style={styles.sendMessageImage} />
+                                            <TextInput style={styles.textInputMessage}
+                                                onFocus={() => setPosition('81.2%')}
+                                                onBlur={() => setPosition('88.7%')}
+                                                onChangeText={(text) => setTextMessage(text)}
+                                                value={textMessage}
+                                            ></TextInput>
+                                            <TouchableOpacity onPress={() => sendMessage(textMessage)}>
+                                                <Ionicons name='send' style={styles.sendMessageImage} />
+                                            </TouchableOpacity>
                                         </View>
                                     </View>
                                 </SafeAreaView>
@@ -282,7 +576,6 @@ export default function Home({ route, navigation }) {
                                 </View>
                             </Modal>
                         </View>
-
                     })}
                     </>
                     : <View style={{ flex: 1, width: '100%', height: windowHeight, alignItems: 'center', justifyContent: 'center' }}>

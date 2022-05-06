@@ -44,6 +44,7 @@ export default function Me({ route, navigation }) {
         password: params.password,
         status: params.status,
         avatar: params.avatar,
+        listFriend: params.listFriend,
     });
     const [errorUpdate, setErrorUpdate] = useState({
         errorName: '* ',
@@ -172,15 +173,8 @@ export default function Me({ route, navigation }) {
                 errorPasswordNewCF: '* ',
             })
         } else {
-            firebase.database().ref('users/' + params.id).set({
-                name: paramName,
-                email: dataUser.email,
-                password: dataUser.password,
-                status: dataUser.status,
-                avatar: {
-                    type: dataUser.avatar.type,
-                    image: dataUser.avatar.image,
-                },
+            firebase.database().ref('users/' + params.id + '/name').set({
+                paramName
             }, function (error) {
                 if (error) {
                     alert('error ' + error);
@@ -188,6 +182,20 @@ export default function Me({ route, navigation }) {
                     alert('success');
                 }
             });
+            let object1 = {};
+            firebase.database().ref('posts/' + dataUser.id).on('value', function (snapshot) {
+                object1 = snapshot.val();
+            });
+            if (object1 != undefined) {
+                let array = object1.post;
+                let len = object1.post.length;
+                for (let i = 0; i < len; i++) {
+                    array[i].nameUser = paramName;
+                }
+                firebase.database().ref('posts/' + dataUser.id).set({
+                    post: array
+                });
+            }
         }
     }
     function updatePass(oldPass, newPass, newPassCF) {
@@ -211,21 +219,14 @@ export default function Me({ route, navigation }) {
         } else {
             if (oldPass == dataUser.password) {
                 if (newPass == newPassCF) {
-                    firebase.database().ref('users/' + params.id).set({
-                        name: newName, // lấy new name vì ban đầu giá trị của nó là name cũ , nếu có cập nhật thì mới thành name mới 
-                        email: dataUser.email,
-                        password: newPass,
-                        status: dataUser.status,
-                        avatar: {
-                            type: dataUser.avatar.type,
-                            image: dataUser.avatar.image,
-                        },
+                    firebase.database().ref('users/' + params.id + '/password').set({
+                        paramPass: newPass
                     }, function (error) {
                         if (error) {
                             alert('error ' + error);
                         } else {
                             alert('success');
-                            navigation.navigate('Login')
+                            navigation.navigate('Login');
                         }
                     });
                 } else {
@@ -240,20 +241,62 @@ export default function Me({ route, navigation }) {
     }
     function updateAvatar(uriImage) {
         setTypeImage('base64');
-        firebase.database().ref('users/' + params.id).set({
-            name: newName, // lấy new name vì ban đầu giá trị của nó là name cũ , nếu có cập nhật thì mới thành name mới 
-            email: dataUser.email,
-            password: dataUser.password,
-            status: dataUser.status,
-            avatar: {
-                type: 'base64',
-                image: uriImage,
-            },
+        firebase.database().ref('users/' + params.id + '/avatar/').set({
+            type: 'base64',
+            image: uriImage,
         }, function (error) {
             if (error) {
                 alert('error ' + error);
             } else {
                 alert('success');
+                let object1 = {};
+                firebase.database().ref('posts/' + dataUser.id).on('value', function (snapshot) {
+                    object1 = snapshot.val();
+                });
+                if (object1 != undefined) {
+                    let array = object1.post;
+                    let len = object1.post.length;
+                    for (let i = 0; i < len; i++) {
+                        array[i].imageUser = uriImage;
+                    }
+                    firebase.database().ref('posts/' + dataUser.id).set({
+                        post: array
+                    });
+                }
+                let array2 = [];
+                firebase.database().ref('users/' + dataUser.id + '/listFriend/').on('value', function (snapshot) {
+                    array2 = snapshot.val(); // lay danh sach cua nguoi dang dung dien thoai
+                });
+                // start
+                // console.log('chao');
+                let len = array2.length;
+                let arrayIdUpdateImage = [];
+                if (array2 != undefined) {
+                    for (let i = 0; i < len; i++) {
+                        arrayIdUpdateImage.push(array2[i].idUserFriend); // tao mang moi de luu tru mang id ban be
+                    }
+                    for (let i = 0; i < len; i++) {
+                        console.log(arrayIdUpdateImage[i]);
+                        let arrayListUsers = [];
+                        firebase.database().ref('users/' + arrayIdUpdateImage[i] + '/listFriend/').on('value', function (snapshot) {
+                            arrayListUsers = snapshot.val(); // lay danh sach ban cua tung id tren
+                        });
+                        console.log('hi');
+                        // console.log(arrayListUsers);
+                        for (var j = 0; j < arrayListUsers.length; j++) {
+                            if (arrayListUsers[j].idUserFriend == dataUser.id) { // kiem tra trong danh sach ban cua tung id co id cua nguoi dang dung dien thoai khong
+                                console.log('co trung');
+                                firebase.database().ref('users/' +  arrayIdUpdateImage[i] + '/listFriend/' + j).set({
+                                    idMess: arrayListUsers[j].idMess,
+                                    idUserFriend: arrayListUsers[j].idUserFriend,
+                                    imageUserFriend: uriImage,
+                                    nameUserFriend: arrayListUsers[j].nameUserFriend
+                                });
+                            }
+                        }
+                    }
+                }
+                // end
             }
         });
     }
@@ -269,10 +312,8 @@ export default function Me({ route, navigation }) {
         if (pickerResult.cancelled === true) {
             return;
         }
-        // console.log(pickerResult.uri);
         if (pickerResult.uri != '') {
             const base64 = await FileSystem.readAsStringAsync(pickerResult.uri, { encoding: 'base64' });
-            // updateAvatar(base64);
             setImageBase64(base64);
         }
     };
@@ -349,7 +390,7 @@ export default function Me({ route, navigation }) {
                     bookMark: [],
                     nameUser: newName,
                     idUser: dataUser.id,
-                    imageUser: dataUser.avatar.image,
+                    imageUser: imageBase64,
                     time: str
                 }
             ]
@@ -453,16 +494,9 @@ export default function Me({ route, navigation }) {
                 bookMark: [],
                 nameUser: newName,
                 idUser: dataUser.id,
-                imageUser: dataUser.avatar.image,
+                imageUser: imageBase64,
                 time: str
             }
-            // let current = [];
-            // firebase.database().ref('posts/').on('value', function (snapshot) {
-            //     snapshot.forEach(function (item) {
-            //         var childData = item.val();
-            //         current = childData.post;
-            //     });
-            // });
             var len = listMyPost.length;
             let listUpdate = [];
             for (var i = 0; i < len; i++) {
@@ -487,13 +521,9 @@ export default function Me({ route, navigation }) {
     return (
         <View style={styles.container}>
             <View style={styles.boxBanner}>
-                {dataUser.avatar.type == 'link'
-                    ? <Image source={{ uri: dataUser.avatar.image }} style={styles.imageBanner}></Image>
-                    : <Text></Text>
-                }
-                {dataUser.avatar.type == 'base64'
+                {typeImage == 'base64'
                     ? <Image source={{ uri: 'data:image/jpeg;base64,' + imageBase64 }} style={styles.imageBanner} />
-                    : <Text></Text>
+                    : <Image source={{ uri: imageBase64 }} style={styles.imageBanner}></Image>
                 }
                 <Text style={styles.textBanner}>{newName == '' ? dataUser.name : newName}</Text>
             </View>
@@ -1047,7 +1077,7 @@ export default function Me({ route, navigation }) {
                                                                 <MapView style={styles.mapPost}
                                                                     onRegionChangeComplete={(...region) => {
                                                                         // console.log(region),
-                                                                            setRegionMyPostUpdate(region[0])
+                                                                        setRegionMyPostUpdate(region[0])
                                                                     }
                                                                     }
                                                                     region={regionMyPostUpdate}
@@ -1356,11 +1386,10 @@ const styles = StyleSheet.create({
     },
     // // modal post dang bai
     postNews: {
-        height: '100%',
+        height: windowHeight,
         backgroundColor: '#FFFFFF',
         padding: 10,
         paddingBottom: 0,
-
     },
     boxChooseImage: {
         width: '100%',

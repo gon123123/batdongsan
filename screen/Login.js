@@ -49,11 +49,12 @@ export default function Login({ navigation }) {
                 var childData = item.val();
                 array.push({
                     id: item.key,
-                    name: childData.name,
+                    name: childData.name.paramName,
                     email: childData.email,
-                    password: childData.password,
+                    password: childData.password.paramPass,
                     status: childData.status,
                     avatar: childData.avatar,
+                    listFriend: childData.listFriend
                 });
             });
             setData(array);
@@ -81,6 +82,7 @@ export default function Login({ navigation }) {
                 var passwordParams = '';
                 var statusParams = '';
                 var avatarParams = '';
+                var listFriendParams = [];
                 var emailDatabase = false;  // kiểm tra tài khoản tồn tại không , mặc định không
                 for (var value of data) {
                     if (value.email == email && value.password == password) {
@@ -91,6 +93,7 @@ export default function Login({ navigation }) {
                         statusParams = value.status;
                         avatarParams = value.avatar;
                         emailDatabase = true;
+                        listFriendParams = value.listFriend;
                         break;
                     }
                 };
@@ -103,6 +106,7 @@ export default function Login({ navigation }) {
                         status: statusParams,
                         avatar: avatarParams,
                         listUser: data,
+                        listFriend : listFriendParams,
                     });
                 } else {
                     alert('login fail');

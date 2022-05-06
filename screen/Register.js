@@ -49,9 +49,9 @@ export default function Register({ navigation }) {
                 var childData = item.val();
                 array.push({
                     id: item.key,
-                    name: childData.name,
+                    name: childData.name.paramName,
                     email: childData.email,
-                    password: childData.password,
+                    password: childData.password.paramPass,
                     status: childData.status,
                     avatar: childData.avatar,
                 });
@@ -85,11 +85,13 @@ export default function Register({ navigation }) {
             setError(arrayErrors);
         } else {
             if (data == []) {  // nếu chưa có tài khoản thì lập tức add vào
+                let paramName = {paramName: prName};
+                let paramPass = {paramPass: prPassword};
                 firebase.database().ref('users/').push().set({
                     // push() sẽ bổ sung cho id
-                    name: prName,
+                    name: paramName,
                     email: prEmail,
-                    password: prPassword,
+                    password: paramPass,
                     status: true,
                     avatar: {
                         type: 'link',
@@ -127,13 +129,15 @@ export default function Register({ navigation }) {
                             console.log(trungEmail);
                             // kiểm tra xem có trùng tài khoản không 
                             if (trungEmail == false) {
+                                let paramName = {paramName: prName}
+                                let paramPass = {paramPass: prPassword};
                                 var keyNew = firebase.database().ref().child('users').push().key;
                                 setId(keyNew);  // để có thể lưu trữ key tại đây thì không dùng push trực tiếp mà phải tạo ra key từ push
                                 firebase.database().ref('users/' + keyNew).set({
                                     // push() sẽ bổ sung cho id
-                                    name: prName,
+                                    name: paramName,
                                     email: prEmail,
-                                    password: prPassword,
+                                    password: paramPass,
                                     status: true,
                                     avatar: {
                                         type: 'link',
@@ -144,19 +148,7 @@ export default function Register({ navigation }) {
                                         alert('error' + error);
                                     } else {
                                         alert('success'),
-                                            navigation.navigate('BottomTabNavigation',
-                                                {
-                                                    id: id,
-                                                    name: prName,
-                                                    email: prEmail,
-                                                    password: prPassword,
-                                                    status: true,
-                                                    avatar: {
-                                                        type: 'link',
-                                                        image: 'https://static2.yan.vn/YanNews/2167221/202003/dan-mang-du-trend-thiet-ke-avatar-du-kieu-day-mau-sac-tu-anh-mac-dinh-b0de2bad.jpg',
-                                                    },
-                                                    // listUser: data
-                                                }
+                                            navigation.navigate('Login',
                                             );
                                         setName('')
                                         setEmail('')
@@ -191,7 +183,7 @@ export default function Register({ navigation }) {
                             <View style={styles.groupText}>
                                 <Text style={styles.label}>Name</Text>
                                 <TextInput style={styles.textInput} name='name' maxLength={40} placeholder='name...'
-                                    onChangeText={(text) => setName(text.trim())}
+                                    onChangeText={(text) => setName(text)}
                                     value={name}
                                 />
                                 <Text style={styles.textError}>{error.errorName}</Text>
