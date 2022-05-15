@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { StyleSheet, Text, View, StatusBar, TouchableOpacity, Modal, TextInput, TouchableWithoutFeedback, Keyboard, Image, ScrollView, Dimensions, SafeAreaView } from 'react-native';
+import {
+    StyleSheet, Text, View, StatusBar, TouchableOpacity, Modal,
+    TextInput, TouchableWithoutFeedback,
+    Keyboard, Image, ScrollView, Dimensions, SafeAreaView
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import girl from '../../assets/girl.jpg'
 
@@ -15,13 +19,15 @@ const windowWidth = Dimensions.get('window').width;
 const windowHeight = Dimensions.get('window').height;
 export default function Chat({ route, navigation }) {
     var params = route.params.params;
-    const [modalVisible, setModalVisible] = useState(false);
+    const [modalVisibleChat, setModalVisibleChat] = useState(false);
     const [modalSearch, setModalSearch] = useState(false);
     const [position, setPosition] = useState('88.7%');
     const [listFriend, setListFriend] = useState(null);
+    const [listFriendSearch, setListFriendSearch] = useState(null);
     const [nameFriend, setNameFriend] = useState('');
     const [imageFriend, setImageFriend] = useState('');
     const [listMessage, setListMessage] = useState([]);
+
     const [dataUser, setDataUser] = useState({
         id: params.id,
         name: params.name,
@@ -34,6 +40,13 @@ export default function Chat({ route, navigation }) {
     const [textMessage, setTextMessage] = useState('');
     const [idMessageAll, setIdMessageAll] = useState('');
     const [imageUserMe, setImageUserMe] = useState(null);
+    // id nguoi nhan
+    const [idUserReceive, setIdUserReceive] = useState('');
+
+    // delete user friend
+    const [modalOkCancel, setModalOkCancel] = useState(false);
+    const [idMessChatDelete, setMessChatDelete] = useState('');
+    const [idUserDelete, setIdUserDelete] = useState('');
     useEffect(() => {
         const firebaseConfig = {
             apiKey: "AIzaSyAfYIJrNCDdzLG4BZa5gDPCBAaoKWYAn6c",
@@ -55,11 +68,11 @@ export default function Chat({ route, navigation }) {
     function getListFriend() {
         firebase.database().ref('users/' + dataUser.id + '/listFriend').on('value', function (snapshot) {
             var childData = snapshot.val();
-            // console.log(childData.length);
             setListFriend(childData);
+            setListFriendSearch(childData);
         });
-        // lay image cua user
-        let imageUsers = {}
+        // lay image cua nguoi dang dung 
+        let imageUsers = {};
         firebase.database().ref('users/' + dataUser.id + '/avatar').on('value', function (snapshot) {
             imageUsers = snapshot.val();
             setImageUserMe({
@@ -68,12 +81,15 @@ export default function Chat({ route, navigation }) {
             });
         })
     }
-    function loadMess(idMess) {
-        firebase.database().ref('listMessage/' + idMess).on('value', function (snapshot) {
-            var childData = snapshot.val();
-            console.log(childData);
-            setListMessage(childData.message);
-        });
+    function loadMess(idMess, idUserFriend, nameUserFriend, ImageUserFriend) {
+        console.log('load da chay');
+        setIdUserReceive(idUserFriend),
+            setIdMessageAll(idMess),
+            setNameFriend(nameUserFriend),
+            setImageFriend(ImageUserFriend),
+            firebase.database().ref('listMessage/' + idMess).on('value', function (snapshot) {
+                setListMessage(snapshot.val().message);
+            });
     }
     function sendMessage(prText) {
         console.log('da gui ...');
@@ -84,7 +100,7 @@ export default function Chat({ route, navigation }) {
             mess: prText,
             time: time,
         };
-        console.log(idMessageAll);
+        // console.log(idMessageAll);
         let mess = [];
         firebase.database().ref('listMessage/' + idMessageAll).on('value', function (snapshot) {
             mess = snapshot.val();
@@ -92,105 +108,243 @@ export default function Chat({ route, navigation }) {
         let newMess = [];
         newMess = mess.message;
         newMess.push(objectMess);
-        console.log(newMess);
+        // console.log(newMess);
         firebase.database().ref('listMessage/' + idMessageAll).set({
             message: newMess
         });
         setTextMessage('');
+        // console.log(idUserReceive);
+        let friendList1 = []; // tao mang chua ban cua nguoi dc nhan mess
+        firebase.database().ref('users/' + idUserReceive + '/listFriend').on('value', function (snapshot) {
+            friendList1 = snapshot.val();
+        });
+        let lenListFriend1 = friendList1.length;
+        // console.log(lenListFriend1);
+        for (let i = 0; i < lenListFriend1; i++) {
+            if (friendList1[i].idUserFriend == dataUser.id) {
+                firebase.database().ref('users/' + idUserReceive + '/listFriend/' + i + '/statusRead').set({
+                    status: true
+                });
+            }
+        }
+        let friendList2 = []; // tao mang chua ban cua nguoi dc gui mess
+        firebase.database().ref('users/' + dataUser.id + '/listFriend').on('value', function (snapshot) {
+            friendList2 = snapshot.val();
+        });
+        let lenListFriend2 = friendList2.length;
+        for (let i = 0; i < lenListFriend2; i++) {
+            if (friendList2[i].idUserFriend == idUserReceive) {
+                firebase.database().ref('users/' + dataUser.id + '/listFriend/' + i + '/statusRead').set({
+                    status: false
+                });
+            }
+        }
+    }
+    function updateListFriend(prTextSearch) {
+        let lenStr = prTextSearch.length;
+        if (lenStr > 0) {
+            let lenVip = listFriend.length;
+            let data = [];
+            for (let i = 0; i < lenVip; i++) {
+                if (listFriend[i].nameUserFriend == prTextSearch) {
+                    data.push({
+                        idMess: listFriend[i].idMess,
+                        idUserFriend: listFriend[i].idUserFriend,
+                        imageUserFriend: listFriend[i].imageUserFriend,
+                        nameUserFriend: listFriend[i].nameUserFriend,
+                        statusRead: listFriend[i].statusRead,
+                    })
+                    console.log('co')
+                }
+            }
+            setListFriendSearch(data);
+        } else {
+            setListFriendSearch(listFriend);
+        }
+    }
+    function dataFriendDelete(prIdUser, prIdMess) {
+        console.log('delete')
+        console.log(prIdUser);
+        console.log(prIdMess);
+        setMessChatDelete(prIdMess);
+        setIdUserDelete(prIdUser);
+    }
+    function deleteFriend() {
+        console.log('delete da chay');
+        // xóa bạn trong listFriend
+        let array = listFriend.filter(function (item) {
+            if (item.idMess != idMessChatDelete) {
+                return item;
+            }
+        })
+        console.log('delete');
+        console.log(array.length);
+        // lấy data của người dang xóa 
+        let updateData = {}
+        firebase.database().ref('users/' + dataUser.id).on('value', function (snapshot) {
+            updateData = snapshot.val();
+        });
+        // cập nhật lại listFriend cho người xóa
+        updateData.listFriend = array;
+        console.log(updateData);
+        firebase.database().ref('users/' + dataUser.id).set({
+            name: updateData.name,
+            email: updateData.email,
+            password: updateData.password,
+            status: updateData.status,
+            avatar: updateData.avatar,
+            listFriend: updateData.listFriend,
+        }, function (error) {
+            if (error) {
+                alert('error' + error);
+            } else {
+                // lấy data của người bị xóa
+                let dataFriend = {};
+                firebase.database().ref('users/' + idUserDelete).on('value', function (snapshot) {
+                    dataFriend = snapshot.val();
+                });
+                let updateDataFriend = dataFriend.listFriend;
+                // xóa friend đối với người bị xóa 
+                let array0 = updateDataFriend.filter(function (item) {
+                    if (item.idMess != idMessChatDelete) {
+                        return item;
+                    }
+                });
+                dataFriend.listFriend = array0;
+                // console.log(dataFriend.listFriend);
+                // cập nhật lại data cho người bị xóa 
+                firebase.database().ref('users/' + idUserDelete).set({
+                    name: dataFriend.name,
+                    email: dataFriend.email,
+                    password: dataFriend.password,
+                    status: dataFriend.status,
+                    avatar: dataFriend.avatar,
+                    listFriend: dataFriend.listFriend,
+                }, function (err) {
+                    if (err) {
+                    } else {
+                        // firebase.database().ref('listMessage/' + idMessChatDelete).set({
+                        //     message : null,
+                        // });
+                    }
+                });
+            }
+        });
     }
     return (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={styles.container}>
-                {/* search */}
-                <View style={styles.boxSearch}>
-                    <TextInput
-                        placeholder='search'
-                        selectionColor='tomato'
-                        style={styles.search}
-                        onPressOut={() => setModalSearch(true)}
-                    />
-                    <Ionicons name="search" style={styles.searchIcon} />
-                </View>
-                <Modal
-                    animationType="fade"
-                    transparent={true}
-                    visible={modalSearch}
-                >
-                    <View style={styles.modalSearch}>
-                        <View style={styles.boxSearchFriend}>
-                            <StatusBar barStyle="light-content" backgroundColor='tomato' />
-                            <TextInput
-                                placeholder='search'
-                                selectionColor='tomato'
-                                style={styles.search}
-                                autoFocus={true}
-                            />
-                            <Ionicons name="search" style={styles.searchIconSearch} />
-                            <Ionicons name="close-outline" style={styles.backIcon} onPress={() => setModalSearch(false)} />
-                        </View>
-                        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                            <View style={styles.boxUserSearch}>
-                                {/* sau nay thay bang FlatList */}
-                                <TouchableOpacity style={styles.user} onPress={() => setModalVisible(true)}>
-                                    <Image source={girl} style={styles.imageUserSearch}></Image>
-                                    <Text style={styles.textUser}>Minh Tuan</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </TouchableWithoutFeedback>
+        <View style={styles.container}>
+            {/* search */}
+            <View style={styles.boxSearch}>
+                <TextInput
+                    placeholder='search'
+                    selectionColor='tomato'
+                    style={styles.search}
+                    onPressOut={() => setModalSearch(true)}
+                />
+                <Ionicons name="search" style={styles.searchIcon} />
+            </View>
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={modalSearch}
+            >
+                <View style={styles.modalSearch}>
+                    <View style={styles.boxSearchFriend}>
+                        <StatusBar barStyle="light-content" backgroundColor='tomato' />
+                        <TextInput
+                            placeholder='search'
+                            selectionColor='tomato'
+                            style={styles.search}
+                            autoFocus={true}
+                            onChangeText={(text) => updateListFriend(text)}
+                        />
+                        <Ionicons name="search" style={styles.searchIconSearch} />
+                        <Ionicons name="close-outline" style={styles.backIcon} onPress={() => {
+                            setModalSearch(false)
+                            updateListFriend('')
+                        }} />
                     </View>
-                </Modal>
-                {/* list user friend */}
-                <ScrollView>
-                    {listFriend == null
-                        ? <Text style={{ textAlign: 'center', color: 'tomato' }}>no friends</Text>
-                        : listFriend.map((item, index) => {
-                            return <View key={index}>
-                                <TouchableOpacity style={styles.list} onPress={() => {
-                                    loadMess(item.idMess)
-                                    setIdMessageAll(item.idMess),
-                                        setNameFriend(item.nameUserFriend),
-                                        setImageFriend(item.imageUserFriend),
-                                        setModalVisible(true)
-                                }}>
+                    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                        <View style={styles.boxUserSearch}>
+                            {/* sau nay thay bang FlatList */}
+                            {listFriendSearch != null
+                                ? listFriendSearch.map((item, index) => {
+                                    return <TouchableOpacity key={index} style={styles.user} onPress={() => {
+                                        setModalVisibleChat(true),
+                                            loadMess(item.idMess, item.idUserFriend, item.nameUserFriend, item.imageUserFriend)
+                                    }}>
+                                        {(item.imageUserFriend).charAt(5) == ':'
+                                            ? <Image source={{ uri: item.imageUserFriend }} style={styles.imageUserSearch}></Image>
+                                            : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + item.imageUserFriend }} style={styles.imageUserSearch} />
+                                        }
+                                        <Text style={styles.textUser}>{item.nameUserFriend}</Text>
+                                    </TouchableOpacity>
+                                })
+                                : <Text></Text>
+                            }
+                        </View>
+                    </TouchableWithoutFeedback>
+                </View>
+            </Modal>
+            {/* list user friend */}
+            <ScrollView>
+                {listFriend == null
+                    ? <Text style={{ textAlign: 'center', color: 'tomato' }}>no friends</Text>
+                    : listFriend.map((item, index) => {
+                        return <View key={index}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <TouchableOpacity style={styles.list}
+                                    onPress={() => {
+                                        setModalVisibleChat(true)
+                                        loadMess(item.idMess, item.idUserFriend, item.nameUserFriend, item.imageUserFriend)
+                                    }}
+                                >
                                     <View style={styles.listLeft}>
                                         {
                                             (item.imageUserFriend).charAt(5) == ':'
                                                 ? <Image source={{ uri: item.imageUserFriend }} style={styles.imageUser}></Image>
                                                 : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + item.imageUserFriend }} style={styles.imageUser} />
                                         }
-                                        {/* <View style={[styles.statusUser, {backgroundColor: 'red'}]}></View> */}
+                                        {item.statusRead.status == true
+                                            ? <View style={[styles.statusUser, { backgroundColor: 'red' }]}></View>
+                                            : <View style={[styles.statusUser, { backgroundColor: 'gray' }]}></View>
+                                        }
                                     </View>
                                     <View style={styles.listRight}>
                                         <Text style={styles.textName}>{item.nameUserFriend}</Text>
                                         {/* <Text style={styles.textMessage} numberOfLines={1}>Hom nay troi kha la dep Hom nay troi kha la depHom nay troi kha la dep</Text> */}
                                     </View>
-                                    <TouchableOpacity>
-                                        <Ionicons name="trash" size={30} color='#FD9F42' style={styles.IconDelete} />
-                                    </TouchableOpacity>
                                 </TouchableOpacity>
-                                <Modal
-                                    animationType="fade"
-                                    transparent={true}
-                                    visible={modalVisible}
-                                >
-                                    {/* Chat */}
-                                    <SafeAreaView>
-                                        <View style={styles.modalLocation}>
-                                            <View style={styles.modalBottom}>
-                                                <TouchableOpacity onPress={() => setModalVisible(false)} >
-                                                    <Text style={styles.chevron}>‹</Text>
-                                                </TouchableOpacity>
-                                                <TouchableOpacity style={{ flexDirection: 'row' }}>
-                                                    {
-                                                        (imageFriend).charAt(5) == ':'
-                                                            ? <Image source={{ uri: imageFriend }} style={styles.image}></Image>
-                                                            : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + imageFriend }} style={styles.image} />
-                                                    }
-                                                    <Text style={styles.textOk}>{nameFriend}</Text>
-                                                </TouchableOpacity>
-                                            </View>
-                                            {/* <TouchableWithoutFeedback onPress={Keyboard.dismiss}> */}
-                                            <View style={[styles.boxMessage, { height: position }]} onPress={Keyboard.dismiss}>
+                                <TouchableOpacity onPress={() => {
+                                    setModalOkCancel(true);
+                                    dataFriendDelete(item.idUserFriend, item.idMess)
+                                }}>
+                                    <Ionicons name="trash" size={30} color='#FD9F42' style={styles.IconDelete} />
+                                </TouchableOpacity>
+                            </View>
+                            <Modal
+                                animationType="fade"
+                                transparent={true}
+                                visible={modalVisibleChat}
+                            >
+                                {/* Chat */}
+                                <SafeAreaView>
+                                    <View style={styles.modalLocation}>
+                                        <View style={styles.modalBottom}>
+                                            <TouchableOpacity onPress={() => setModalVisibleChat(false)} >
+                                                <Text style={styles.chevron}>‹</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity style={{ flexDirection: 'row' }}>
+                                                {
+                                                    (imageFriend).charAt(5) == ':'
+                                                        ? <Image source={{ uri: imageFriend }} style={styles.image}></Image>
+                                                        : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + imageFriend }} style={styles.image} />
+                                                }
+                                                <Text style={styles.textOk}>{nameFriend}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <View style={[styles.boxMessage, { height: position }]} onPress={Keyboard.dismiss}>
+                                            <ScrollView style={{ paddingBottom: 20 }}>
                                                 {listMessage.map((mess, indexMess) => {
                                                     return mess.idUser == dataUser.id
                                                         ? <View key={indexMess} style={[styles.messageBlock, { flexDirection: 'row-reverse' }]}>
@@ -214,31 +368,52 @@ export default function Chat({ route, navigation }) {
                                                                 <Text style={styles.textTime}>{mess.time}</Text>
                                                             </View>
                                                         </View>
-                                                })}
-                                            </View>
-                                            {/* </TouchableWithoutFeedback> */}
-                                            <View style={styles.sendMessage}>
-                                                <Ionicons name='image-outline' style={styles.sendMessageImage} />
-                                                <TextInput style={styles.textInputMessage}
-                                                    onFocus={() => setPosition('81.2%')}
-                                                    onBlur={() => setPosition('88.7%')}
-                                                    onChangeText={(text) => setTextMessage(text)}
-                                                    value={textMessage}
-                                                ></TextInput>
-                                                <TouchableOpacity onPress={() => sendMessage(textMessage)}>
-                                                    <Ionicons name='send' style={styles.sendMessageImage} />
-                                                </TouchableOpacity>
-                                            </View>
+                                                })
+                                                }
+                                            </ScrollView>
                                         </View>
-                                    </SafeAreaView>
-                                </Modal>
-                            </View>
-                        })
-                    }
-                </ScrollView>
-
-            </View>
-        </TouchableWithoutFeedback>
+                                        <View style={styles.sendMessage}>
+                                            <Ionicons name='image-outline' style={styles.sendMessageImage} />
+                                            <TextInput style={styles.textInputMessage}
+                                                onFocus={() => setPosition('81.2%')}
+                                                onBlur={() => setPosition('88.7%')}
+                                                onChangeText={(text) => setTextMessage(text)}
+                                                value={textMessage}
+                                            ></TextInput>
+                                            <TouchableOpacity onPress={() => sendMessage(textMessage)}>
+                                                <Ionicons name='send' style={styles.sendMessageImage} />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </SafeAreaView>
+                            </Modal>
+                        </View>
+                    })
+                }
+            </ScrollView>
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={modalOkCancel}
+            >
+                <View style={styles.boxOkCancel}>
+                    <View style={{ width: 300, height: 100, backgroundColor: '#FFFFFF', borderRadius: 20, padding: 15 }}>
+                        <Text style={{ textAlign: 'center', color: 'tomato', }}>Delete this person ?</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 15 }}>
+                            <TouchableOpacity onPress={() => setModalOkCancel(false)}>
+                                <Text style={styles.textButtonOkCancel}>NO</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => {
+                                deleteFriend(),
+                                    setModalOkCancel(false)
+                            }}>
+                                <Text style={styles.textButtonOkCancel}>YES</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+        </View>
     )
 }
 const styles = StyleSheet.create({
@@ -336,17 +511,17 @@ const styles = StyleSheet.create({
         borderRadius: 60 / 2,
         position: 'relative',
     },
-    // statusUser: {
-    //     width: 15,
-    //     height: 15,
-    //     borderRadius: 15 / 2,
-    //     backgroundColor: '#3BFE1C',
-    //     borderWidth: 2,
-    //     borderColor: '#FFFFFF',
-    //     position: 'absolute',
-    //     bottom: 2,
-    //     right: 0
-    // },
+    statusUser: {
+        width: 15,
+        height: 15,
+        borderRadius: 15 / 2,
+        backgroundColor: '#3BFE1C',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+        position: 'absolute',
+        bottom: 2,
+        right: 0
+    },
     listRight: {
         // backgroundColor: 'green',
         justifyContent: 'center',
@@ -451,5 +626,21 @@ const styles = StyleSheet.create({
     textTime: {
         fontSize: 7,
         color: '#DCDBCD',
+    },
+    // delete user
+    boxOkCancel: {
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    textButtonOkCancel: {
+        color: '#FFFFFF',
+        backgroundColor: 'tomato',
+        padding: 0,
+        paddingLeft: 15,
+        paddingRight: 15,
+        borderRadius: 3,
     }
 })

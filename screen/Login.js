@@ -1,27 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, StatusBar, TouchableWithoutFeedback, Keyboard, TextInput } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, StatusBar, TouchableWithoutFeedback, Keyboard, TextInput, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Loading from './Loading';
 
 import firebase, { initializeApp } from "firebase/app";
 import "firebase/auth";
 import "firebase/database";
-import "firebase/firestore";
+// import "firebase/firestore";
 import "firebase/functions";
 import "firebase/storage";
 
+import { LogBox } from 'react-native';
+import _ from 'lodash';
+
+LogBox.ignoreLogs(['Warning:...']); // ignore specific logs
+LogBox.ignoreAllLogs(); // ignore all logs
+const _console = _.clone(console);
+console.warn = message => {
+    if (message.indexOf('Setting a timer') <= -1) {
+        _console.warn(message);
+    }
+};
 
 export default function Login({ navigation }) {
-    const [loading, setLoading] = useState(true);
-
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [data, setData] = useState([]);
+    const [data, setData] = useState(null);
     const [error, setError] = useState({
         email: '* ',
         password: '* ',
     });
-    const load = setTimeout(() => { setLoading(false) }, 1000);
     useEffect(() => {
         const firebaseConfig = {
             apiKey: "AIzaSyAfYIJrNCDdzLG4BZa5gDPCBAaoKWYAn6c",
@@ -106,7 +114,7 @@ export default function Login({ navigation }) {
                         status: statusParams,
                         avatar: avatarParams,
                         listUser: data,
-                        listFriend : listFriendParams,
+                        listFriend: listFriendParams,
                     });
                 } else {
                     alert('login fail');
@@ -119,9 +127,9 @@ export default function Login({ navigation }) {
     }
     return (
         <>
-            {loading ?
-                <Loading></Loading> :
+            {data != null ?
                 <View style={styles.container}>
+                    {/* <ScrollView style={{ height: '100%' }}> */}
                     <StatusBar barStyle="dark-content" backgroundColor='#FFFFFF' />
                     <TouchableWithoutFeedback onPress={Keyboard.dismiss} >
                         <View style={styles.boxLogin}>
@@ -151,7 +159,7 @@ export default function Login({ navigation }) {
                                 </View>
                             </>
                             <TouchableOpacity style={styles.buttonLogin} onPress={() => kiemTraTaiKhoan(email, password)}>
-                                <Text style={styles.textButton}>Sing In</Text>
+                                <Text style={styles.textButton}>Sign In</Text>
                             </TouchableOpacity>
                             <View style={styles.Or}>
                                 <Text style={styles.textOne}></Text>
@@ -180,7 +188,9 @@ export default function Login({ navigation }) {
                             </TouchableOpacity>
                         </View>
                     </TouchableWithoutFeedback>
+                    {/* </ScrollView> */}
                 </View>
+                : <Loading></Loading>
             }
         </>
     )
@@ -227,7 +237,7 @@ const styles = StyleSheet.create({
     },
     buttonLogin: {
         backgroundColor: 'tomato',
-        marginTop: 30,
+        marginTop: 10,
         width: '100%',
         padding: 12,
         justifyContent: 'center',

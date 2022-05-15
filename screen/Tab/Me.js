@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     StyleSheet, Text, View, Image, TouchableOpacity, Dimensions,
     ScrollView, Modal, SafeAreaView, TouchableWithoutFeedback, Keyboard,
-    StatusBar, TextInput, Alert, FlatList, ActivityIndicator
+    StatusBar, TextInput, ActivityIndicator
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,13 +12,6 @@ import * as FileSystem from 'expo-file-system';
 import Swiper from 'react-native-swiper';
 import MapView from 'react-native-maps';
 import * as Location from 'expo-location';
-
-import girl from '../../assets/girl.jpg';
-import girl1 from '../../assets/girl1.jpg';
-import girl2 from '../../assets/girl2.jpeg'
-import girl3 from '../../assets/girl3.jpg';
-import girl4 from '../../assets/girl4.jpg';
-import girl5 from '../../assets/girl5.jpg';
 
 import firebase, { initializeApp } from "firebase/app";
 import "firebase/auth";
@@ -173,6 +166,7 @@ export default function Me({ route, navigation }) {
                 errorPasswordNewCF: '* ',
             })
         } else {
+            // cập nhật tên bài viết
             firebase.database().ref('users/' + params.id + '/name').set({
                 paramName
             }, function (error) {
@@ -182,6 +176,7 @@ export default function Me({ route, navigation }) {
                     alert('success');
                 }
             });
+            // cap nhật tên mới cho các bài viết 
             let object1 = {};
             firebase.database().ref('posts/' + dataUser.id).on('value', function (snapshot) {
                 object1 = snapshot.val();
@@ -196,6 +191,39 @@ export default function Me({ route, navigation }) {
                     post: array
                 });
             }
+            // start cập nhật cho các user khác biết 
+            let array2 = [];
+            firebase.database().ref('users/' + dataUser.id + '/listFriend/').on('value', function (snapshot) {
+                array2 = snapshot.val(); // lay danh sach cua nguoi dang dung dien thoai
+            });
+            // console.log('chao');
+            let len = array2.length;
+            let arrayIdUpdateImage = [];
+            if (array2 != undefined) {
+                for (let i = 0; i < len; i++) {
+                    arrayIdUpdateImage.push(array2[i].idUserFriend); // tao mang moi de luu tru mang id ban be
+                }
+                for (let i = 0; i < len; i++) {
+                    // console.log(arrayIdUpdateImage[i]);
+                    let arrayListUsers = [];
+                    firebase.database().ref('users/' + arrayIdUpdateImage[i] + '/listFriend/').on('value', function (snapshot) {
+                        arrayListUsers = snapshot.val(); // lay danh sach ban cua tung id tren
+                    });
+                    for (var j = 0; j < arrayListUsers.length; j++) {
+                        if (arrayListUsers[j].idUserFriend == dataUser.id) { // kiem tra trong danh sach ban cua tung id co id cua nguoi dang dung dien thoai khong
+                            console.log('co trung');
+                            firebase.database().ref('users/' + arrayIdUpdateImage[i] + '/listFriend/' + j).set({
+                                idMess: arrayListUsers[j].idMess,
+                                idUserFriend: arrayListUsers[j].idUserFriend,
+                                imageUserFriend: arrayListUsers[j].imageUserFriend,
+                                nameUserFriend: paramName,
+                                statusRead: arrayListUsers[j].statusRead
+                            });
+                        }
+                    }
+                }
+            }
+            // end
         }
     }
     function updatePass(oldPass, newPass, newPassCF) {
@@ -263,11 +291,11 @@ export default function Me({ route, navigation }) {
                         post: array
                     });
                 }
+                // start cập nhật cho các user khác biết 
                 let array2 = [];
                 firebase.database().ref('users/' + dataUser.id + '/listFriend/').on('value', function (snapshot) {
                     array2 = snapshot.val(); // lay danh sach cua nguoi dang dung dien thoai
                 });
-                // start
                 // console.log('chao');
                 let len = array2.length;
                 let arrayIdUpdateImage = [];
@@ -276,21 +304,20 @@ export default function Me({ route, navigation }) {
                         arrayIdUpdateImage.push(array2[i].idUserFriend); // tao mang moi de luu tru mang id ban be
                     }
                     for (let i = 0; i < len; i++) {
-                        console.log(arrayIdUpdateImage[i]);
+                        // console.log(arrayIdUpdateImage[i]);
                         let arrayListUsers = [];
                         firebase.database().ref('users/' + arrayIdUpdateImage[i] + '/listFriend/').on('value', function (snapshot) {
                             arrayListUsers = snapshot.val(); // lay danh sach ban cua tung id tren
                         });
-                        console.log('hi');
-                        // console.log(arrayListUsers);
                         for (var j = 0; j < arrayListUsers.length; j++) {
                             if (arrayListUsers[j].idUserFriend == dataUser.id) { // kiem tra trong danh sach ban cua tung id co id cua nguoi dang dung dien thoai khong
                                 console.log('co trung');
-                                firebase.database().ref('users/' +  arrayIdUpdateImage[i] + '/listFriend/' + j).set({
+                                firebase.database().ref('users/' + arrayIdUpdateImage[i] + '/listFriend/' + j).set({
                                     idMess: arrayListUsers[j].idMess,
                                     idUserFriend: arrayListUsers[j].idUserFriend,
                                     imageUserFriend: uriImage,
-                                    nameUserFriend: arrayListUsers[j].nameUserFriend
+                                    nameUserFriend: arrayListUsers[j].nameUserFriend,
+                                    statusRead: arrayListUsers[j].statusRead
                                 });
                             }
                         }
@@ -333,23 +360,31 @@ export default function Me({ route, navigation }) {
             const uriBase64 = await FileSystem.readAsStringAsync(pickerResult.uri, { encoding: 'base64' });
             let arrList = [];
             arrList.push(uriBase64);
-            let arrListImage = arrList.concat(listImagePost);
-            firebase.database().ref('listImagePost/' + params.id).set({
-                image: arrListImage,
-            }, function (error) {
-                if (error) {
-                    // alert('error ' + error);
-                } else {
-                    firebase.database().ref('listImagePost/').on('value', function (snapshot) {
-                        let array = [];
-                        snapshot.forEach(function (item) {
-                            var childData = item.val();
-                            array = childData.image;
-                        });
-                        setListImagePost(array);
-                    });
-                }
-            });
+            let arrListImage = [];
+            if (listImagePost != null) {
+                arrListImage = arrList.concat(listImagePost);
+            } else {
+                arrListImage = arrList;
+            }
+            console.log(arrListImage.length);
+            setListImagePost(arrListImage);
+            // firebase.database().ref('listImagePost/' + dataUser.id).set({
+            //     image: arrListImage,
+            // }, function (error) {
+            //     if (error) {
+            //         // alert('error ' + error);
+            //     } else {
+            //         firebase.database().ref('listImagePost/' + dataUser.id).on('value', function (snapshot) {
+            //             let array = [];
+            //             snapshot.forEach(function (item) {
+            //                 var childData = item.val();
+            //                 array.push(childData.image);
+            //             });
+            //             console.log(array);
+            //             setListImagePost(array);
+            //         });
+            //     }
+            // });
         }
     };
     function clearListImageHouse() {
@@ -435,7 +470,17 @@ export default function Me({ route, navigation }) {
         });
     }
     function deletePost() {
-        firebase.database().ref('posts/' + params.id + '/post/' + indexUpdateMyPost).remove();
+        console.log('id' + indexUpdateMyPost);
+        var childData = [];
+        firebase.database().ref('posts/' + params.id).on('value', function (snapshot) {
+            snapshot.forEach(function (item, index) {
+                childData = item.val();
+            });
+        });
+        childData.splice(indexUpdateMyPost, 1);
+        firebase.database().ref('posts/' + params.id).set({
+            post: childData
+        })
     }
     function clearListImageUpdateMyPost() {
         setImageListMyPost([]);
@@ -703,12 +748,17 @@ export default function Me({ route, navigation }) {
                 transparent={true}
                 visible={modalPost}
             >
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss} >
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                     <ScrollView>
                         <View style={styles.postNews}>
                             <View style={styles.modalLocation}>
                                 <View style={[styles.modalBottom, { borderBottomWidth: 0 }]}>
-                                    <Text onPress={() => setModalPost(false)} style={styles.textOk}>Xong</Text>
+                                    <Text onPress={() => {
+                                        setListImagePost(null);
+                                        setPricePost('');
+                                        setDescriptionPost('');
+                                        setModalPost(false)
+                                    }} style={styles.textOk}>Xong</Text>
                                 </View>
                             </View>
                             {okListImageHouse == true
@@ -883,15 +933,11 @@ export default function Me({ route, navigation }) {
                                                         }
                                                         <Text style={styles.textNameUse}>{newName}</Text>
                                                         <Text style={[styles.textNameUse, { fontWeight: '100', fontStyle: 'italic' }]}>{item.time}</Text>
+                                                    </View>
+                                                    <View style={styles.row1Right}>
                                                         <TouchableOpacity style={{ marginLeft: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
                                                             <Text style={[styles.textNameUse, { marginRight: 5 }]}>report</Text>
                                                             <Ionicons name='ios-flag' size={15} color='tomato' />
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                    <View style={styles.row1Right}>
-                                                        <Text style={{ color: '#D5D7D4', marginRight: 10, fontSize: 12, }}>Care</Text>
-                                                        <TouchableOpacity>
-                                                            <Ionicons name='heart' size={25} color='#F61D6C' />
                                                         </TouchableOpacity>
                                                     </View>
                                                 </View>
@@ -967,134 +1013,136 @@ export default function Me({ route, navigation }) {
                                         >
                                             {/* modal update my post */}
                                             <TouchableWithoutFeedback onPress={Keyboard.dismiss} >
-                                                <View style={styles.postNews}>
-                                                    <View style={styles.modalLocation}>
-                                                        <View style={[styles.modalBottom, { borderBottomWidth: 0 }]}>
-                                                            <Text onPress={() => setModalUpdate(false)} style={styles.textOk}>Xong</Text>
-                                                        </View>
-                                                    </View>
-                                                    {okUpListImageUpdateMyPost === true
-                                                        ?
-                                                        <View View style={[styles.boxImagePost, { height: windowHeight / 2.5, width: windowWidth - 20 }]}>
-                                                            <Swiper
-                                                                showsButtons={true}
-                                                                dot={
-                                                                    <View style={{ backgroundColor: '#DCE0DB', width: 8, height: 8, borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3, }} />
-                                                                }
-                                                                activeDot={
-                                                                    <View style={{ backgroundColor: '#B5B7B4', width: 8, height: 8, borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3, }} />
-                                                                }
-                                                                nextButton={<Text style={styles.buttonText}>›</Text>}
-                                                                prevButton={<Text style={styles.buttonText}>‹</Text>}
-                                                            >
-                                                                {imageListMyPost.map((item2, pos) => {
-                                                                    return <Image key={pos} resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + item2 }} style={{ width: '100%', height: '100%' }} />
-                                                                })}
-                                                            </Swiper>
-                                                        </View> :
-                                                        <TouchableOpacity style={styles.boxChooseImage} onPress={() => listImageHouseUpdateMyPost()}>
-                                                            <Ionicons name='ios-images' size={35} color='#B7B7AC' />
-                                                        </TouchableOpacity>
-                                                    }
-                                                    <Text style={styles.textError}>{errorMyPostUpdate.listImage}</Text>
-                                                    {
-                                                        imageListMyPost == null
-                                                            ? <Text></Text>
-                                                            : <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                                                                {imageListMyPost.map((giaTri, viTri) => {
-                                                                    return <View key={viTri} style={{ width: 115, height: 100, position: 'relative', margin: 3, marginBottom: 5, }}>
-                                                                        <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + giaTri }} style={{ width: 100, height: 100 }} />
-                                                                        <Ionicons name='ios-close-circle' size={25} color='#DCDBDA' style={{ position: 'absolute', right: 0, top: -10 }} onPress={() => clearOneImageUpdateMyPost(giaTri)} />
-                                                                    </View>
-                                                                })}
+                                                <ScrollView>
+                                                    <View style={styles.postNews}>
+                                                        <View style={styles.modalLocation}>
+                                                            <View style={[styles.modalBottom, { borderBottomWidth: 0 }]}>
+                                                                <Text onPress={() => setModalUpdate(false)} style={styles.textOk}>Xong</Text>
                                                             </View>
-                                                    }
-                                                    <View style={[styles.boxClear, { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }]}>
-                                                        <TouchableOpacity style={styles.clear} onPress={() => { clearListImageUpdateMyPost(), setOkUpListImageUpdateMyPost(false) }}>
-                                                            <Text style={styles.clearImage}>Clear</Text>
-                                                        </TouchableOpacity>
+                                                        </View>
                                                         {okUpListImageUpdateMyPost === true
-                                                            ? <TouchableOpacity style={styles.clear} onPress={() => setOkUpListImageUpdateMyPost(false)}>
-                                                                <Text style={styles.clearImage}>Back</Text>
-                                                            </TouchableOpacity>
-                                                            : <TouchableOpacity style={styles.clear} onPress={() => setOkUpListImageUpdateMyPost(true)}>
-                                                                <Text style={styles.clearImage}>OK</Text>
+                                                            ?
+                                                            <View View style={[styles.boxImagePost, { height: windowHeight / 3, width: windowWidth - 20 }]}>
+                                                                <Swiper
+                                                                    showsButtons={true}
+                                                                    dot={
+                                                                        <View style={{ backgroundColor: '#DCE0DB', width: 8, height: 8, borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3, }} />
+                                                                    }
+                                                                    activeDot={
+                                                                        <View style={{ backgroundColor: '#B5B7B4', width: 8, height: 8, borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3, }} />
+                                                                    }
+                                                                    nextButton={<Text style={styles.buttonText}>›</Text>}
+                                                                    prevButton={<Text style={styles.buttonText}>‹</Text>}
+                                                                >
+                                                                    {imageListMyPost.map((item2, pos) => {
+                                                                        return <Image key={pos} resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + item2 }} style={{ width: '100%', height: '100%' }} />
+                                                                    })}
+                                                                </Swiper>
+                                                            </View> :
+                                                            <TouchableOpacity style={styles.boxChooseImage} onPress={() => listImageHouseUpdateMyPost()}>
+                                                                <Ionicons name='ios-images' size={35} color='#B7B7AC' />
                                                             </TouchableOpacity>
                                                         }
-                                                    </View>
-                                                    <View style={styles.boxInput}>
-                                                        <>
-                                                            <View style={styles.boxFrom}>
-                                                                <View style={styles.groupText}>
-                                                                    <Text style={styles.label}>Price</Text>
-                                                                    <TextInput style={styles.textInput} name='price' maxLength={40} placeholder='type price...'
-                                                                        onChangeText={(text) => setPriceMyPostUpdate(text)}
-                                                                        value={priceMyPostUpdate}
-                                                                    />
-                                                                    <Text style={styles.textError}>{errorMyPostUpdate.price}</Text>
+                                                        <Text style={styles.textError}>{errorMyPostUpdate.listImage}</Text>
+                                                        {
+                                                            imageListMyPost == null
+                                                                ? <Text></Text>
+                                                                : <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                                                                    {imageListMyPost.map((giaTri, viTri) => {
+                                                                        return <View key={viTri} style={{ width: 115, height: 100, position: 'relative', margin: 3, marginBottom: 5, }}>
+                                                                            <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + giaTri }} style={{ width: 100, height: 100 }} />
+                                                                            <Ionicons name='ios-close-circle' size={25} color='#DCDBDA' style={{ position: 'absolute', right: 0, top: -10 }} onPress={() => clearOneImageUpdateMyPost(giaTri)} />
+                                                                        </View>
+                                                                    })}
                                                                 </View>
-                                                            </View>
-                                                        </>
-                                                        <>
-                                                            <View style={styles.boxFrom}>
-                                                                <View style={styles.groupText}>
-                                                                    <Text style={styles.label}>Description</Text>
-                                                                    <TextInput style={styles.textInput} name='description' placeholder='type description...'
-                                                                        onChangeText={(text) => setDescriptionMyPostUpdate(text)}
-                                                                        value={descriptionMyPostUpdate}
-                                                                    />
-                                                                    <Text style={styles.textError}>{errorMyPostUpdate.description}</Text>
+                                                        }
+                                                        <View style={[styles.boxClear, { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }]}>
+                                                            <TouchableOpacity style={styles.clear} onPress={() => { clearListImageUpdateMyPost(), setOkUpListImageUpdateMyPost(false) }}>
+                                                                <Text style={styles.clearImage}>Clear</Text>
+                                                            </TouchableOpacity>
+                                                            {okUpListImageUpdateMyPost === true
+                                                                ? <TouchableOpacity style={styles.clear} onPress={() => setOkUpListImageUpdateMyPost(false)}>
+                                                                    <Text style={styles.clearImage}>Back</Text>
+                                                                </TouchableOpacity>
+                                                                : <TouchableOpacity style={styles.clear} onPress={() => setOkUpListImageUpdateMyPost(true)}>
+                                                                    <Text style={styles.clearImage}>OK</Text>
+                                                                </TouchableOpacity>
+                                                            }
+                                                        </View>
+                                                        <View style={styles.boxInput}>
+                                                            <>
+                                                                <View style={styles.boxFrom}>
+                                                                    <View style={styles.groupText}>
+                                                                        <Text style={styles.label}>Price</Text>
+                                                                        <TextInput style={styles.textInput} name='price' maxLength={40} placeholder='type price...'
+                                                                            onChangeText={(text) => setPriceMyPostUpdate(text)}
+                                                                            value={priceMyPostUpdate}
+                                                                        />
+                                                                        <Text style={styles.textError}>{errorMyPostUpdate.price}</Text>
+                                                                    </View>
                                                                 </View>
-                                                            </View>
-                                                        </>
-                                                    </View>
-                                                    <View style={{ alignItems: 'flex-start', width: '100%', marginTop: 10, marginBottom: 10 }}>
-                                                        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'flex-end' }} onPress={() => {
-                                                            setRegionMyPostUpdate(item.regions),
-                                                                setCoordinateMyPostUpdate(item.coordinate),
-                                                                setModalMapUpdate(true)
-                                                        }}>
-                                                            <Ionicons name='location' size={25} color='tomato' />
-                                                            <Text style={styles.textLocation}>location on map</Text>
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                    <View style={styles.boxClear}>
-                                                        <TouchableOpacity style={styles.clear} onPress={() => updateMyPost(item.sold)}>
-                                                            <Text style={styles.clearImage}>Update</Text>
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                    {/* modal map update my post */}
-                                                    <Modal
-                                                        animationType="slide"
-                                                        transparent={true}
-                                                        visible={modalMapUpdate}
-                                                    >
-                                                        <SafeAreaView>
-                                                            <View style={styles.modalLocation}>
-                                                                <View style={styles.modalBottom}>
-                                                                    <Text onPress={() => setModalMapUpdate(false)} style={styles.textOk}>Xong</Text>
+                                                            </>
+                                                            <>
+                                                                <View style={styles.boxFrom}>
+                                                                    <View style={styles.groupText}>
+                                                                        <Text style={styles.label}>Description</Text>
+                                                                        <TextInput style={styles.textInput} name='description' placeholder='type description...'
+                                                                            onChangeText={(text) => setDescriptionMyPostUpdate(text)}
+                                                                            value={descriptionMyPostUpdate}
+                                                                        />
+                                                                        <Text style={styles.textError}>{errorMyPostUpdate.description}</Text>
+                                                                    </View>
                                                                 </View>
-                                                                <MapView style={styles.mapPost}
-                                                                    onRegionChangeComplete={(...region) => {
-                                                                        // console.log(region),
-                                                                        setRegionMyPostUpdate(region[0])
-                                                                    }
-                                                                    }
-                                                                    region={regionMyPostUpdate}
-                                                                >
-                                                                    <MapView.Marker
-                                                                        coordinate={coordinateMyPostUpdate}
-                                                                        description={descriptionMyPostUpdate}
-                                                                        draggable={true}
-                                                                        onDragStart={(value) =>
-                                                                            setCoordinateMyPostUpdate(value.nativeEvent.coordinate)
+                                                            </>
+                                                        </View>
+                                                        <View style={{ alignItems: 'flex-start', width: '100%', marginTop: 10, marginBottom: 10 }}>
+                                                            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'flex-end' }} onPress={() => {
+                                                                setRegionMyPostUpdate(item.regions),
+                                                                    setCoordinateMyPostUpdate(item.coordinate),
+                                                                    setModalMapUpdate(true)
+                                                            }}>
+                                                                <Ionicons name='location' size={25} color='tomato' />
+                                                                <Text style={styles.textLocation}>location on map</Text>
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                        <View style={styles.boxClear}>
+                                                            <TouchableOpacity style={styles.clear} onPress={() => updateMyPost(item.sold)}>
+                                                                <Text style={styles.clearImage}>Update</Text>
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                        {/* modal map update my post */}
+                                                        <Modal
+                                                            animationType="slide"
+                                                            transparent={true}
+                                                            visible={modalMapUpdate}
+                                                        >
+                                                            <SafeAreaView>
+                                                                <View style={styles.modalLocation}>
+                                                                    <View style={styles.modalBottom}>
+                                                                        <Text onPress={() => setModalMapUpdate(false)} style={styles.textOk}>Xong</Text>
+                                                                    </View>
+                                                                    <MapView style={styles.mapPost}
+                                                                        onRegionChangeComplete={(...region) => {
+                                                                            // console.log(region),
+                                                                            setRegionMyPostUpdate(region[0])
                                                                         }
-                                                                    />
-                                                                </MapView>
-                                                            </View>
-                                                        </SafeAreaView>
-                                                    </Modal>
-                                                </View>
+                                                                        }
+                                                                        region={regionMyPostUpdate}
+                                                                    >
+                                                                        <MapView.Marker
+                                                                            coordinate={coordinateMyPostUpdate}
+                                                                            description={descriptionMyPostUpdate}
+                                                                            draggable={true}
+                                                                            onDragStart={(value) =>
+                                                                                setCoordinateMyPostUpdate(value.nativeEvent.coordinate)
+                                                                            }
+                                                                        />
+                                                                    </MapView>
+                                                                </View>
+                                                            </SafeAreaView>
+                                                        </Modal>
+                                                    </View>
+                                                </ScrollView>
                                             </TouchableWithoutFeedback>
                                             {/* end modal update my post */}
                                         </Modal>

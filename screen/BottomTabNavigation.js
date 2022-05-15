@@ -26,10 +26,10 @@ function ChatsStackScreen({ route}) {
     );
 }
 const UserStack = createNativeStackNavigator();
-function UserScreen() {
+function UserScreen({ route}) {
     return (
         <UserStack.Navigator>
-            <UserStack.Screen options={{ headerShown: false }} name="phoneBook" component={UserBook} />
+            <UserStack.Screen options={{ headerShown: false }} name="phoneBook" component={UserBook} initialParams={route} />
         </UserStack.Navigator>
     )
 }
@@ -115,7 +115,7 @@ export default function BottomTabNavigation({ route, navigation }) {
                 headerTitleStyle: {
                     color: 'white',
                 }
-            }} name="USER" component={UserScreen} />
+            }} name="USER" component={UserScreen} initialParams={dataUser} />
             <Tab.Screen options={{
                 headerShown: false, headerStyle: {
                     backgroundColor: 'tomato',

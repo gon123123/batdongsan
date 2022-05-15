@@ -27,7 +27,7 @@ export default function Home({ route, navigation }) {
     var params = route.params.params;
     const [modalVisible, setModalVisible] = useState(false);
     const [modalChat, setModalChat] = useState(false);
-    const [modalReport, setModalReport] = useState(false);
+    const [modalOkCancel, setModalOkCancel] = useState(false);
     const [position, setPosition] = useState('88.7%');
     const [dataPost, setDataPost] = useState(null);
     const [dataUser, setDataUser] = useState({
@@ -46,6 +46,7 @@ export default function Home({ route, navigation }) {
     //mess
     const [textMessage, setTextMessage] = useState('');
     const [idMessageAll, setIdMessageAll] = useState('');
+    const [idUserReceive, setIdUserReceive] = useState('');
     useEffect(() => {
         const firebaseConfig = {
             apiKey: "AIzaSyAfYIJrNCDdzLG4BZa5gDPCBAaoKWYAn6c",
@@ -73,8 +74,6 @@ export default function Home({ route, navigation }) {
                     post: childData.post,
                 });
             });
-            console.log(array.length);
-            // changeData();
             let arrayData = [];
             let len1 = array.length;
             for (let i = 0; i < len1; i++) {
@@ -85,7 +84,7 @@ export default function Home({ route, navigation }) {
             }
             setDataPost(arrayData);
         });
-        let imageUsers = {}
+        let imageUsers = {};
         firebase.database().ref('users/' + dataUser.id + '/avatar').on('value', function (snapshot) {
             imageUsers = snapshot.val();
             setImageUserMe({
@@ -103,7 +102,7 @@ export default function Home({ route, navigation }) {
         } else {
             setTypeImageUserFriend('base64');
         }
-        console.log(typeImage);
+        // console.log(typeImage);
         var keyMess = firebase.database().ref().child('users').push().key; // tạo key mess cho 2 người
         // lay data nguoi dang dung
         var object1 = {}
@@ -116,11 +115,18 @@ export default function Home({ route, navigation }) {
             object2 = snapshot.val();
         })
         // tao 2 doi tuong 
+        let statusRead1 = {
+            status: true,
+        }
+        let statusRead2 = {
+            status: false,
+        }
         let objFriendYou = {  // dung de add cho nguoi dang dung 
             idUserFriend: idFriend,
             idMess: keyMess,
             nameUserFriend: nameFriend,
             imageUserFriend: imageFriend,
+            statusRead: statusRead2
         }
         let arrayYou = [];
         arrayYou.push(objFriendYou);
@@ -129,6 +135,7 @@ export default function Home({ route, navigation }) {
             idMess: keyMess,
             nameUserFriend: dataUser.name,
             imageUserFriend: imageUserMe.image,
+            statusRead: statusRead1
         }
         let arrayMe = [];
         arrayMe.push(objFriendMe);
@@ -180,7 +187,7 @@ export default function Home({ route, navigation }) {
         } else if (object1.listFriend != undefined && object2.listFriend == undefined) {
             let listFriendMe = object1.listFriend; // chuan bi add them 1 ban cho nguoi dang dung
             listFriendMe.push(objFriendYou);
-            console.log(listFriendMe);
+            // console.log(listFriendMe);
             firebase.database().ref('users/' + dataUser.id).set({
                 name: object1.name,
                 email: object1.email,
@@ -226,7 +233,7 @@ export default function Home({ route, navigation }) {
         } else if (object1.listFriend == undefined && object2.listFriend != undefined) {
             let listFriendYou = object2.listFriend; // chuan bi add them 1 ban cho nguoi dang bai
             listFriendYou.push(objFriendMe);
-            console.log(listFriendYou);
+            // console.log(listFriendYou);
             firebase.database().ref('users/' + dataUser.id).set({
                 name: object1.name,
                 email: object1.email,
@@ -287,19 +294,17 @@ export default function Home({ route, navigation }) {
             if (ktID) {
                 console.log('co');
                 setIdMessageAll(idMess);
-                console.log(idMessageAll);
+                // console.log(idMessageAll);
                 let mess = [];
                 firebase.database().ref('listMessage/' + idMess).on('value', function (snapshot) {
                     mess = snapshot.val();
-                    console.log(mess.message);
+                    // console.log(mess.message);
                     setListMessage(mess.message);
                 })
-                // console.log(listMessage);
             } else {
                 console.log('khong');
                 let listFriendMe = object1.listFriend; // chuan bi add them 1 ban cho nguoi dang dung
                 listFriendMe.push(objFriendYou);
-                // console.log(listFriendMe);
                 firebase.database().ref('users/' + dataUser.id).set({
                     name: object1.name,
                     email: object1.email,
@@ -312,8 +317,7 @@ export default function Home({ route, navigation }) {
                     listFriend: listFriendMe
                 });
                 let listFriendYou = object2.listFriend; // chuan bi add them 1 ban cho nguoi dang bai
-                listFriendYou.push(objFriendYou);
-                // console.log(listFriendYou);
+                listFriendYou.push(objFriendMe);
                 firebase.database().ref('users/' + idFriend).set({
                     name: object2.name,
                     email: object2.email,
@@ -343,7 +347,7 @@ export default function Home({ route, navigation }) {
                 let mess = [];
                 firebase.database().ref('listMessage/' + keyMess).on('value', function (snapshot) {
                     mess = snapshot.val();
-                    console.log(mess.message);
+                    // console.log(mess.message);
                     setListMessage(mess.message);
                 });
             }
@@ -358,7 +362,7 @@ export default function Home({ route, navigation }) {
             mess: prText,
             time: time,
         };
-        console.log(idMessageAll);
+        // console.log(idMessageAll);
         let mess = [];
         firebase.database().ref('listMessage/' + idMessageAll).on('value', function (snapshot) {
             mess = snapshot.val();
@@ -366,16 +370,41 @@ export default function Home({ route, navigation }) {
         let newMess = [];
         newMess = mess.message;
         newMess.push(objectMess);
-        console.log(newMess);
         firebase.database().ref('listMessage/' + idMessageAll).set({
             message: newMess
         });
         setTextMessage('');
+        // console.log(idUserReceive);
+        let friendList1 = []; // tao mang chua ban cua nguoi dc nhan mess
+        firebase.database().ref('users/' + idUserReceive + '/listFriend').on('value', function (snapshot) {
+            friendList1 = snapshot.val();
+        });
+        let lenListFriend1 = friendList1.length;
+        // console.log(lenListFriend1);
+        for (let i = 0; i < lenListFriend1; i++) {
+            if (friendList1[i].idUserFriend == dataUser.id) {
+                firebase.database().ref('users/' + idUserReceive + '/listFriend/' + i + '/statusRead').set({
+                    status: true
+                });
+            }
+        }
+        let friendList2 = []; // tao mang chua ban cua nguoi dc gui mess
+        firebase.database().ref('users/' + dataUser.id + '/listFriend').on('value', function (snapshot) {
+            friendList2 = snapshot.val();
+        });
+        let lenListFriend2 = friendList2.length;
+        // console.log(lenListFriend2);
+        for (let i = 0; i < lenListFriend2; i++) {
+            if (friendList2[i].idUserFriend == idUserReceive) {
+                firebase.database().ref('users/' + dataUser.id + '/listFriend/' + i + '/statusRead').set({
+                    status: false
+                });
+            }
+        }
     }
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor='tomato' />
-            <Text>Home</Text>
             <ScrollView>
                 {dataPost != null
                     ? <>{dataPost.map((item, index) => {
@@ -408,26 +437,17 @@ export default function Home({ route, navigation }) {
                                             }
                                             <Text style={styles.textNameUse}>{item.nameUser}</Text>
                                             <Text style={[styles.textNameUse, { fontWeight: '100', fontStyle: 'italic' }]}>{item.time}</Text>
+                                        </View>
+                                        <View style={styles.row1Right}>
                                             <TouchableOpacity style={{ marginLeft: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}
                                                 onPress={() => {
                                                     // nho phai tao useState gui index truoc
-                                                    setModalReport(true)
+                                                    setModalOkCancel(true)
                                                 }
                                                 }>
                                                 <Text style={[styles.textNameUse, { marginRight: 5 }]}>report</Text>
                                                 <Ionicons name='ios-flag' size={15} color='tomato' />
                                             </TouchableOpacity>
-                                        </View>
-                                        <View style={styles.row1Right}>
-                                            <Text style={{ color: '#D5D7D4', marginRight: 10, fontSize: 12, }}>Care</Text>
-                                            {item.idUser == dataUser.id
-                                                ? <View>
-                                                    <Ionicons name='heart-outline' size={25} color='#F61D6C' />
-                                                </View>
-                                                : <TouchableOpacity>
-                                                    <Ionicons name='heart-outline' size={25} color='#F61D6C' />
-                                                </TouchableOpacity>
-                                            }
                                         </View>
                                     </View>
                                     <View style={styles.row2}>
@@ -446,14 +466,15 @@ export default function Home({ route, navigation }) {
                                         </View>
                                         <View style={styles.row4Right}>
                                             {item.idUser == dataUser.id
-                                                ? <View style={styles.bottomChat}>
+                                                ? <View style={[styles.bottomChat, { backgroundColor: 'gray' }]}>
                                                     <Text style={styles.bottomTextChat}>Chat</Text>
                                                     <Ionicons name='chatbubble-outline' style={styles.chatbubble} />
                                                 </View>
                                                 : <TouchableOpacity style={styles.bottomChat} onPress={() => {
                                                     setModalChat(true),
-                                                        kiemTraListFriend(item.idUser, item.imageUser, item.nameUser)
-                                                        // ,ImageUser()
+                                                        setIdUserReceive(item.idUser);
+                                                    kiemTraListFriend(item.idUser, item.imageUser, item.nameUser)
+                                                    // ,ImageUser()
                                                 }}>
                                                     <Text style={styles.bottomTextChat}>Chat</Text>
                                                     <Ionicons name='chatbubble-outline' style={styles.chatbubble} />
@@ -559,17 +580,17 @@ export default function Home({ route, navigation }) {
                             <Modal
                                 animationType="fade"
                                 transparent={true}
-                                visible={modalReport}
+                                visible={modalOkCancel}
                             >
-                                <View style={styles.boxReport}>
+                                <View style={styles.boxOkCancel}>
                                     <View style={{ width: 300, height: 100, backgroundColor: '#FFFFFF', borderRadius: 20, padding: 15 }}>
                                         <Text style={{ textAlign: 'center', color: 'tomato', }}>Report this post ?</Text>
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 15 }}>
-                                            <TouchableOpacity onPress={() => setModalReport(false)}>
-                                                <Text style={styles.textButtonReport}>NO</Text>
+                                            <TouchableOpacity onPress={() => setModalOkCancel(false)}>
+                                                <Text style={styles.textButtonOkCancel}>NO</Text>
                                             </TouchableOpacity>
                                             <TouchableOpacity>
-                                                <Text style={styles.textButtonReport}>OK</Text>
+                                                <Text style={styles.textButtonOkCancel}>OK</Text>
                                             </TouchableOpacity>
                                         </View>
                                     </View>
@@ -851,14 +872,14 @@ const styles = StyleSheet.create({
     mapPost: {
         height: '100%',
     },
-    boxReport: {
+    boxOkCancel: {
         width: '100%',
         height: '100%',
         backgroundColor: 'rgba(0,0,0,0.3)',
         alignItems: 'center',
         justifyContent: 'center'
     },
-    textButtonReport: {
+    textButtonOkCancel: {
         color: '#FFFFFF',
         backgroundColor: 'tomato',
         padding: 0,
