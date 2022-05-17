@@ -116,6 +116,8 @@ export default function Login({ navigation }) {
                         listUser: data,
                         listFriend: listFriendParams,
                     });
+                    setEmail('');
+                    setPassword('');
                 } else {
                     alert('login fail');
                 }
@@ -151,6 +153,7 @@ export default function Login({ navigation }) {
                                     <View style={styles.groupText}>
                                         <Text style={styles.label}>Password</Text>
                                         <TextInput style={styles.textInput} placeholder='password...'
+                                        secureTextEntry={true}
                                             onChangeText={(text) => setPassword(text.trim())}
                                             value={password}
                                         />

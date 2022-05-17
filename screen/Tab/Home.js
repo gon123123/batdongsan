@@ -27,9 +27,11 @@ export default function Home({ route, navigation }) {
     var params = route.params.params;
     const [modalVisible, setModalVisible] = useState(false);
     const [modalChat, setModalChat] = useState(false);
-    const [modalOkCancel, setModalOkCancel] = useState(false);
     const [position, setPosition] = useState('88.7%');
     const [dataPost, setDataPost] = useState(null);
+    const [dataPostProvincial, setDataPostProvincial] = useState(null)
+    const arrayProvincial = ['ALL', 'Quảng Trị', 'Khánh Hòa', 'Hưng Yên', 'Kiên Giang', 'Quảng Nam', 'Quảng Ngãi', 'Đà Nẵng', 'Cần Thơ'];
+    const [activeProvincial, setActiveProvincial] = useState(0);
     const [dataUser, setDataUser] = useState({
         id: params.id,
         name: params.name,
@@ -83,6 +85,8 @@ export default function Home({ route, navigation }) {
                 }
             }
             setDataPost(arrayData);
+            setDataPostProvincial(arrayData);
+            setActiveProvincial(0);
         });
         let imageUsers = {};
         firebase.database().ref('users/' + dataUser.id + '/avatar').on('value', function (snapshot) {
@@ -402,203 +406,286 @@ export default function Home({ route, navigation }) {
             }
         }
     }
+    function updateListPostProvincial(prProvincial) {
+        // console.log(prProvincial);
+        if (prProvincial == 'ALL') {
+            setDataPost(dataPostProvincial);
+        } else {
+            let arrayUpdate = [];
+            for (let value of dataPostProvincial) {
+                if (value.provincial == prProvincial) {
+                    arrayUpdate.push(value);
+                }
+            }
+            setDataPost(arrayUpdate);
+        }
+    }
+    function carePost(prCoordinate, prDescription, prIdUser, prImageUser, prListImage, prNameUser, prPrice, prProvincial, prRegion, prSold, prTime) {
+        let obj = {
+            coordinate: prCoordinate,
+            description: prDescription,
+            idUser: prIdUser,
+            imageUser: prImageUser,
+            listImage: prListImage,
+            nameUser: prNameUser,
+            price: prPrice,
+            provincial: prProvincial,
+            regions: prRegion,
+            sold: prSold,
+            time: prTime,
+        }
+        let listCarePost = [];
+        firebase.database().ref('listCare/' + dataUser.id + '/postCare').on('value', function (snapshot) {
+            snapshot.forEach(function (item, index) {
+                listCarePost.push(item.val());
+            })
+        });
+        let len = listCarePost.length;
+        if (len == 0) {
+            console.log('bang o');
+            listCarePost.push(obj);
+            firebase.database().ref('listCare/' + dataUser.id).set({
+                postCare: listCarePost
+            }, function (err) {
+                if (err) { } else {
+                    alert('success')
+                }
+            });
+        } else {
+            let yes = false;
+            for (let value of listCarePost) {
+                if (value.idUser == obj.idUser && value.nameUser == obj.nameUser && value.description == obj.description && value.price == obj.price && value.provincial == obj.provincial && value.sold == obj.sold && value.time == obj.time) {
+                    console.log('da co trong nay roi')
+                    yes = true;
+                    break;
+                }
+            }
+            if (yes == false) {
+                listCarePost.push(obj);
+                firebase.database().ref('listCare/' + dataUser.id).set({
+                    postCare: listCarePost
+                }, function (err) {
+                    if (err) { } else {
+                        alert('success')
+                    }
+                });
+            }
+        }
+    }
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor='tomato' />
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                showsHorizontalScrollIndicator={false}
+                horizontal={true} style={{ flexDirection: 'row', padding: 5, padding: 10, paddingTop: 10, }}>
+                {arrayProvincial.map(function (item, index) {
+                    return index == activeProvincial
+                        ? <TouchableOpacity key={index} onPress={() => { updateListPostProvincial(item), setActiveProvincial(index) }}>
+                            <Text style={{ borderWidth: 1, borderColor: 'tomato', marginRight: 15, padding: 3, borderRadius: 10, textAlign: 'center', paddingRight: 5, paddingLeft: 5, color: '#FFFFFF', backgroundColor: 'tomato' }}>{item}</Text>
+                        </TouchableOpacity>
+                        : <TouchableOpacity key={index} onPress={() => { updateListPostProvincial(item), setActiveProvincial(index) }}>
+                            <Text style={{ borderWidth: 1, borderColor: 'tomato', marginRight: 15, padding: 3, borderRadius: 10, textAlign: 'center', paddingRight: 5, paddingLeft: 5, color: 'tomato' }}>{item}</Text>
+                        </TouchableOpacity>
+                })}
+            </ScrollView>
             <ScrollView>
                 {dataPost != null
-                    ? <>{dataPost.map((item, index) => {
-                        return <View key={index}>
-                            <View style={[styles.post, { borderBottomWidth: 5, borderBottomColor: '#DCDBDA' }]}>
-                                <View style={styles.boxImage}>
-                                    <Swiper
-                                        showsButtons={true}
-                                        dot={
-                                            <View style={{ backgroundColor: '#DCE0DB', width: 8, height: 8, borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3, }} />
-                                        }
-                                        activeDot={
-                                            <View style={{ backgroundColor: '#B5B7B4', width: 8, height: 8, borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3, }} />
-                                        }
-                                        nextButton={<Text style={styles.buttonText}>›</Text>}
-                                        prevButton={<Text style={styles.buttonText}>‹</Text>}
-                                    >
-                                        {(item.listImage).map((item2, pos) => {
-                                            return <Image key={pos} source={{ uri: 'data:image/jpeg;base64,' + item2 }} style={styles.ImagePost} />
-                                        })}
-                                    </Swiper>
-                                </View>
-                                <View style={styles.description}>
-                                    <View style={styles.row1}>
-                                        <View style={styles.row1Left}>
-                                            {
-                                                (item.imageUser).charAt(5) == ':'
-                                                    ? <Image source={{ uri: item.imageUser }} style={styles.imageUser}></Image>
-                                                    : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + item.imageUser }} style={styles.imageUser} />
+                    ? dataPost.length > 0
+                        ? <>{dataPost.map((item, index) => {
+                            return <View key={index}>
+                                <View style={[styles.post, { borderBottomWidth: 5, borderBottomColor: '#DCDBDA' }]}>
+                                    <View style={styles.boxImage}>
+                                        <Swiper
+                                            showsButtons={true}
+                                            dot={
+                                                <View style={{ backgroundColor: '#DCE0DB', width: 8, height: 8, borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3, }} />
                                             }
-                                            <Text style={styles.textNameUse}>{item.nameUser}</Text>
-                                            <Text style={[styles.textNameUse, { fontWeight: '100', fontStyle: 'italic' }]}>{item.time}</Text>
-                                        </View>
-                                        <View style={styles.row1Right}>
-                                            <TouchableOpacity style={{ marginLeft: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}
-                                                onPress={() => {
-                                                    // nho phai tao useState gui index truoc
-                                                    setModalOkCancel(true)
-                                                }
-                                                }>
-                                                <Text style={[styles.textNameUse, { marginRight: 5 }]}>report</Text>
-                                                <Ionicons name='ios-flag' size={15} color='tomato' />
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                    <View style={styles.row2}>
-                                        <Text style={styles.TextDescription}>{item.description}</Text>
-                                    </View>
-                                    <View style={styles.row3}>
-                                        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }} onPress={() => setModalVisible(true)}>
-                                            <Ionicons name='location' size={25} color='tomato' />
-                                            <Text style={styles.textLocation}>location on map</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                    <View style={styles.row4}>
-                                        <View style={styles.row4Left}>
-                                            <Text style={[{ fontWeight: 'bold', }, styles.TextPrice1]}>Price :</Text>
-                                            <Text style={[{ fontWeight: 'bold', }, styles.TextPrice2]}>{item.price}</Text>
-                                        </View>
-                                        <View style={styles.row4Right}>
-                                            {item.idUser == dataUser.id
-                                                ? <View style={[styles.bottomChat, { backgroundColor: 'gray' }]}>
-                                                    <Text style={styles.bottomTextChat}>Chat</Text>
-                                                    <Ionicons name='chatbubble-outline' style={styles.chatbubble} />
-                                                </View>
-                                                : <TouchableOpacity style={styles.bottomChat} onPress={() => {
-                                                    setModalChat(true),
-                                                        setIdUserReceive(item.idUser);
-                                                    kiemTraListFriend(item.idUser, item.imageUser, item.nameUser)
-                                                    // ,ImageUser()
-                                                }}>
-                                                    <Text style={styles.bottomTextChat}>Chat</Text>
-                                                    <Ionicons name='chatbubble-outline' style={styles.chatbubble} />
-                                                </TouchableOpacity>
+                                            activeDot={
+                                                <View style={{ backgroundColor: '#B5B7B4', width: 8, height: 8, borderRadius: 4, marginLeft: 3, marginRight: 3, marginTop: 3, marginBottom: 3, }} />
                                             }
-                                            <View style={styles.bottomSold}>
-                                                <Text style={styles.bottomTextSold}>Sold</Text>
-                                                {item.sold === true
-                                                    ? <Ionicons name='checkmark-outline' style={styles.checkmark} />
-                                                    : <Text></Text>
-                                                }
-                                            </View>
-                                        </View>
-                                    </View>
-                                </View>
-                            </View>
-                            <Modal
-                                animationType="slide"
-                                transparent={true}
-                                visible={modalVisible}
-                            >
-                                <SafeAreaView>
-                                    <View style={styles.modalLocation}>
-                                        <View style={[styles.modalBottom, { backgroundColor: '#FFFFFF' }]}>
-                                            <Text onPress={() => setModalVisible(false)} style={[styles.textOk, { color: 'tomato' }]}>Xong</Text>
-                                        </View>
-                                        <MapView style={styles.mapPost}
-                                            region={item.regions}
+                                            nextButton={<Text style={styles.buttonText}>›</Text>}
+                                            prevButton={<Text style={styles.buttonText}>‹</Text>}
                                         >
-                                            <MapView.Marker
-                                                coordinate={item.coordinate}
-                                                description={item.description}
-                                                draggable={true}
-                                            />
-                                        </MapView>
+                                            {(item.listImage).map((item2, pos) => {
+                                                return <Image key={pos} source={{ uri: 'data:image/jpeg;base64,' + item2 }} style={styles.ImagePost} />
+                                            })}
+                                        </Swiper>
                                     </View>
-                                </SafeAreaView>
-                            </Modal>
-                            {/* modal chat */}
-                            <Modal
-                                animationType="fade"
-                                transparent={true}
-                                visible={modalChat}
-                            >
-                                <SafeAreaView>
-                                    <View style={styles.modalLocation}>
-                                        <View style={styles.modalBottom}>
-                                            <TouchableOpacity onPress={() => setModalChat(false)} >
-                                                <Text style={styles.chevron}>‹</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity style={{ flexDirection: 'row' }}>
-                                                {typeImageUserFriend == 'link'
-                                                    ? <Image source={{ uri: imageUserFriend }} style={styles.image}></Image>
-                                                    : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + imageUserFriend }} style={styles.image} />
+                                    <View style={styles.description}>
+                                        <View style={styles.row1}>
+                                            <View style={styles.row1Left}>
+                                                {
+                                                    (item.imageUser).charAt(5) == ':'
+                                                        ? <Image source={{ uri: item.imageUser }} style={styles.imageUser}></Image>
+                                                        : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + item.imageUser }} style={styles.imageUser} />
                                                 }
-                                                <Text style={styles.textOk}>{nameFriendChat}</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                                            <View style={[styles.boxMessage, { height: position }]}>
-                                                <ScrollView>
-                                                    {listMessage.map((mess, indexMess) => {
-                                                        return mess.idUser == dataUser.id
-                                                            ? <View key={indexMess} style={[styles.messageBlock, { flexDirection: 'row-reverse' }]}>
-                                                                {(imageUserMe.image).charAt(5) == ':'
-                                                                    ? <Image source={{ uri: imageUserMe.image }} style={styles.messageBlock_image}></Image>
-                                                                    : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + imageUserMe.image }} style={styles.messageBlock_image} />
-                                                                }
-                                                                <View style={styles.message}>
-                                                                    <Text style={styles.textMessageBox}>{mess.mess}</Text>
-                                                                    <Text style={styles.textTime}>{mess.time}</Text>
-                                                                </View>
-                                                            </View>
-                                                            : <View key={indexMess} style={[styles.messageBlock, { flexDirection: 'row' }]}>
-                                                                {typeImageUserFriend == 'link'
-                                                                    ? <Image source={{ uri: imageUserFriend }} style={styles.messageBlock_image}></Image>
-                                                                    : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + imageUserFriend }} style={styles.messageBlock_image} />
-                                                                }
-                                                                <View style={styles.message}>
-                                                                    <Text style={styles.textMessageBox}>{mess.mess}</Text>
-                                                                    <Text style={styles.textTime}>{mess.time}</Text>
-                                                                </View>
-                                                            </View>
-                                                    })}
-                                                </ScrollView>
+                                                <Text style={styles.textNameUse}>{item.nameUser}</Text>
+                                                <Text style={[styles.textNameUse, { fontWeight: '100', fontStyle: 'italic' }]}>{item.time}</Text>
                                             </View>
-                                        </TouchableWithoutFeedback>
-                                        <View style={styles.sendMessage}>
-                                            <Ionicons name='image-outline' style={styles.sendMessageImage} />
-                                            <TextInput style={styles.textInputMessage}
-                                                onFocus={() => setPosition('81.2%')}
-                                                onBlur={() => setPosition('88.7%')}
-                                                onChangeText={(text) => setTextMessage(text)}
-                                                value={textMessage}
-                                            ></TextInput>
-                                            <TouchableOpacity onPress={() => sendMessage(textMessage)}>
-                                                <Ionicons name='send' style={styles.sendMessageImage} />
+                                            <View style={styles.row1Right}>
+                                                {item.idUser == dataUser.id
+                                                    ? <View
+                                                        style={{ marginLeft: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}
+                                                    >
+                                                        <Text style={[styles.textNameUse, { marginRight: 5 }]}>Care</Text>
+                                                        <Ionicons name='heart' size={25} color='pink' />
+                                                    </View>
+                                                    : <TouchableOpacity
+                                                        style={{ marginLeft: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}
+                                                        onPress={() => {
+                                                            carePost(
+                                                                item.coordinate,
+                                                                item.description,
+                                                                item.idUser,
+                                                                item.imageUser,
+                                                                item.listImage,
+                                                                item.nameUser,
+                                                                item.price,
+                                                                item.provincial,
+                                                                item.regions,
+                                                                item.sold,
+                                                                item.time
+                                                            );
+                                                        }}
+                                                    >
+                                                        <Text style={[styles.textNameUse, { marginRight: 5 }]}>Care</Text>
+                                                        <Ionicons name='heart' size={25} color='#F13F93' />
+                                                    </TouchableOpacity>
+                                                }
+                                            </View>
+                                        </View>
+                                        <View style={styles.row2}>
+                                            <Text style={styles.TextDescription}>{item.description}</Text>
+                                        </View>
+                                        <View style={styles.row3}>
+                                            <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }} onPress={() => setModalVisible(true)}>
+                                                <Ionicons name='location' size={25} color='tomato' />
+                                                <Text style={styles.textLocation}>location on map</Text>
                                             </TouchableOpacity>
                                         </View>
-                                    </View>
-                                </SafeAreaView>
-                            </Modal>
-                            <Modal
-                                animationType="fade"
-                                transparent={true}
-                                visible={modalOkCancel}
-                            >
-                                <View style={styles.boxOkCancel}>
-                                    <View style={{ width: 300, height: 100, backgroundColor: '#FFFFFF', borderRadius: 20, padding: 15 }}>
-                                        <Text style={{ textAlign: 'center', color: 'tomato', }}>Report this post ?</Text>
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 15 }}>
-                                            <TouchableOpacity onPress={() => setModalOkCancel(false)}>
-                                                <Text style={styles.textButtonOkCancel}>NO</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity>
-                                                <Text style={styles.textButtonOkCancel}>OK</Text>
-                                            </TouchableOpacity>
+                                        <View style={styles.row4}>
+                                            <View style={styles.row4Left}>
+                                                <Text style={[{ fontWeight: 'bold', }, styles.TextPrice1]}>Price :</Text>
+                                                <Text style={[{ fontWeight: 'bold', }, styles.TextPrice2]}>{item.price}</Text>
+                                            </View>
+                                            <View style={styles.row4Right}>
+                                                {item.idUser == dataUser.id
+                                                    ? <View style={[styles.bottomChat, { backgroundColor: 'gray' }]}>
+                                                        <Text style={styles.bottomTextChat}>Chat</Text>
+                                                        <Ionicons name='chatbubble-outline' style={styles.chatbubble} />
+                                                    </View>
+                                                    : <TouchableOpacity style={styles.bottomChat} onPress={() => {
+                                                        setModalChat(true),
+                                                            setIdUserReceive(item.idUser);
+                                                        kiemTraListFriend(item.idUser, item.imageUser, item.nameUser)
+                                                        // ,ImageUser()
+                                                    }}>
+                                                        <Text style={styles.bottomTextChat}>Chat</Text>
+                                                        <Ionicons name='chatbubble-outline' style={styles.chatbubble} />
+                                                    </TouchableOpacity>
+                                                }
+                                                <View style={styles.bottomSold}>
+                                                    <Text style={styles.bottomTextSold}>Sold</Text>
+                                                    {item.sold === true
+                                                        ? <Ionicons name='checkmark-outline' style={styles.checkmark} />
+                                                        : <Text></Text>
+                                                    }
+                                                </View>
+                                            </View>
                                         </View>
                                     </View>
                                 </View>
-                            </Modal>
-                        </View>
-                    })}
-                    </>
+                                <Modal
+                                    animationType="slide"
+                                    transparent={true}
+                                    visible={modalVisible}
+                                >
+                                    <SafeAreaView>
+                                        <View style={styles.modalLocation}>
+                                            <View style={[styles.modalBottom, { backgroundColor: '#FFFFFF' }]}>
+                                                <Text onPress={() => setModalVisible(false)} style={[styles.textOk, { color: 'tomato' }]}>Xong</Text>
+                                            </View>
+                                            <MapView style={styles.mapPost}
+                                                region={item.regions}
+                                            >
+                                                <MapView.Marker
+                                                    coordinate={item.coordinate}
+                                                    description={item.description}
+                                                    draggable={true}
+                                                />
+                                            </MapView>
+                                        </View>
+                                    </SafeAreaView>
+                                </Modal>
+                                {/* modal chat */}
+                                <Modal
+                                    animationType="fade"
+                                    transparent={true}
+                                    visible={modalChat}
+                                >
+                                    <SafeAreaView>
+                                        <View style={styles.modalLocation}>
+                                            <View style={styles.modalBottom}>
+                                                <TouchableOpacity onPress={() => setModalChat(false)} >
+                                                    <Text style={styles.chevron}>‹</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity style={{ flexDirection: 'row' }}>
+                                                    {typeImageUserFriend == 'link'
+                                                        ? <Image source={{ uri: imageUserFriend }} style={styles.image}></Image>
+                                                        : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + imageUserFriend }} style={styles.image} />
+                                                    }
+                                                    <Text style={styles.textOk}>{nameFriendChat}</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                                                <View style={[styles.boxMessage, { height: position }]}>
+                                                    <ScrollView>
+                                                        {listMessage.map((mess, indexMess) => {
+                                                            return mess.idUser == dataUser.id
+                                                                ? <View key={indexMess} style={[styles.messageBlock, { flexDirection: 'row-reverse' }]}>
+                                                                    {(imageUserMe.image).charAt(5) == ':'
+                                                                        ? <Image source={{ uri: imageUserMe.image }} style={styles.messageBlock_image}></Image>
+                                                                        : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + imageUserMe.image }} style={styles.messageBlock_image} />
+                                                                    }
+                                                                    <View style={styles.message}>
+                                                                        <Text style={styles.textMessageBox}>{mess.mess}</Text>
+                                                                        <Text style={styles.textTime}>{mess.time}</Text>
+                                                                    </View>
+                                                                </View>
+                                                                : <View key={indexMess} style={[styles.messageBlock, { flexDirection: 'row' }]}>
+                                                                    {typeImageUserFriend == 'link'
+                                                                        ? <Image source={{ uri: imageUserFriend }} style={styles.messageBlock_image}></Image>
+                                                                        : <Image resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + imageUserFriend }} style={styles.messageBlock_image} />
+                                                                    }
+                                                                    <View style={styles.message}>
+                                                                        <Text style={styles.textMessageBox}>{mess.mess}</Text>
+                                                                        <Text style={styles.textTime}>{mess.time}</Text>
+                                                                    </View>
+                                                                </View>
+                                                        })}
+                                                    </ScrollView>
+                                                </View>
+                                            </TouchableWithoutFeedback>
+                                            <View style={styles.sendMessage}>
+                                                <Ionicons name='image-outline' style={styles.sendMessageImage} />
+                                                <TextInput style={styles.textInputMessage}
+                                                    onFocus={() => setPosition('81.2%')}
+                                                    onBlur={() => setPosition('88.7%')}
+                                                    onChangeText={(text) => setTextMessage(text)}
+                                                    value={textMessage}
+                                                ></TextInput>
+                                                <TouchableOpacity onPress={() => sendMessage(textMessage)}>
+                                                    <Ionicons name='send' style={styles.sendMessageImage} />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    </SafeAreaView>
+                                </Modal>
+                            </View>
+                        })}
+                        </>
+                        : <Text style={{ textAlign: 'center', color: 'tomato' }}>There are no posts</Text>
                     : <View style={{ flex: 1, width: '100%', height: windowHeight, alignItems: 'center', justifyContent: 'center' }}>
                         <ActivityIndicator size={40} color="tomato" style={{ alignItems: 'center', justifyContent: 'center' }}></ActivityIndicator>
                     </View>

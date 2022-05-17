@@ -72,13 +72,7 @@ export default function Me({ route, navigation }) {
             price: '* ',
             description: '* ',
             listImage: '* ',
-        }
-    );
-    const [errorMyPostUpdate, setErrorMyPostUpdate] = useState(
-        {
-            price: '* ',
-            description: '* ',
-            listImage: '* ',
+            selectedProvincial: '* ',
         }
     );
     const [regionsPost, setRegionsPost] = useState({
@@ -91,6 +85,17 @@ export default function Me({ route, navigation }) {
         latitude: 16.9016955,
         longitude: 107.0186967,
     });
+    const [selectedProvincial, setSelectedProvincial] = useState('');
+    const arrayProvincial = ['Quảng Trị', 'Khánh Hòa', 'Hưng Yên', 'Kiên Giang', 'Quảng Nam', 'Quảng Ngãi', 'Đà Nẵng', 'Cần Thơ'];
+
+    const [errorMyPostUpdate, setErrorMyPostUpdate] = useState(
+        {
+            price: '* ',
+            description: '* ',
+            listImage: '* ',
+            selectedMyProvincial: '* ',
+        }
+    );
     const [modalMyPost, setModalMyPost] = useState(false);
     const [listMyPost, setListMyPost] = useState([]);
     const [imageListMyPost, setImageListMyPost] = useState(null);
@@ -108,6 +113,7 @@ export default function Me({ route, navigation }) {
         longitude: 107.0186967,
     });
     const [indexUpdateMyPost, setIndexUpdateMyPost] = useState(null);
+    const [selectedMyProvincial, setSelectedMyProvincial] = useState('');
     useEffect(() => {
         const firebaseConfig = {
             apiKey: "AIzaSyAfYIJrNCDdzLG4BZa5gDPCBAaoKWYAn6c",
@@ -396,12 +402,16 @@ export default function Me({ route, navigation }) {
         }
     }
     function postNew(listImage, price, description) {
+        console.log(price);
+        console.log(description);
+        console.log(selectedProvincial);
         let Error = {
             price: '',
             description: '',
             listImage: '',
+            selectedProvincial: '',
         }
-        if (listImage == null || price == '' || description == '') {
+        if (listImage == null || price == '' || description == '' || selectedProvincial == '') {
             if (listImage == null) {
                 Error.listImage = '* can not the blank';
             }
@@ -410,6 +420,9 @@ export default function Me({ route, navigation }) {
             }
             if (description == '') {
                 Error.description = '* can not the blank';
+            }
+            if (selectedProvincial == '') {
+                Error.selectedProvincial = '* can not the blank';
             }
             setErrorPost(Error);
         } else {
@@ -422,11 +435,11 @@ export default function Me({ route, navigation }) {
                     regions: regionsPost,
                     coordinate: coordinatePost,
                     sold: false,
-                    bookMark: [],
+                    provincial: selectedProvincial,
                     nameUser: newName,
                     idUser: dataUser.id,
                     imageUser: imageBase64,
-                    time: str
+                    time: str,
                 }
             ]
             let newPost = listMyPost.concat(post);
@@ -515,8 +528,9 @@ export default function Me({ route, navigation }) {
             price: '* ',
             description: '* ',
             listImage: '* ',
+            selectedMyProvincial: '* ',
         }
-        if (imageListMyPost == null || priceMyPostUpdate == '' || descriptionMyPostUpdate == '') {
+        if (imageListMyPost == null || priceMyPostUpdate == '' || descriptionMyPostUpdate == '' || selectedMyProvincial == '') {
             if (imageListMyPost == null) {
                 Error.listImage = '* can not the blank';
             }
@@ -525,6 +539,9 @@ export default function Me({ route, navigation }) {
             }
             if (descriptionMyPostUpdate == '') {
                 Error.description = '* can not the blank';
+            }
+            if (selectedMyProvincial == '') {
+                Error.selectedMyProvincial = '* can not the blank';
             }
             setErrorMyPostUpdate(Error);
         } else {
@@ -536,7 +553,7 @@ export default function Me({ route, navigation }) {
                 regions: regionMyPostUpdate,
                 coordinate: coordinateMyPostUpdate,
                 sold: sold,
-                bookMark: [],
+                provincial: selectedMyProvincial,
                 nameUser: newName,
                 idUser: dataUser.id,
                 imageUser: imageBase64,
@@ -627,18 +644,21 @@ export default function Me({ route, navigation }) {
                         <View style={styles.UpdatePass}>
                             <Text style={styles.labelUpdateName}>Old password</Text>
                             <TextInput placeholder="type old password" style={styles.textUpdateName}
+                                secureTextEntry={true}
                                 onChangeText={(text) => setOldPassUpdate(text.trim())}
                                 value={oldPassUpdate}
                             ></TextInput>
                             <Text style={[styles.textError, { fontSize: 7 }]}>{errorUpdate.errorPasswordOL}</Text>
                             <Text style={styles.labelUpdateName}>New password</Text>
                             <TextInput placeholder="type new password" style={styles.textUpdateName}
+                                secureTextEntry={true}
                                 onChangeText={(text) => setNewPassUpdate(text.trim())}
                                 value={newPassUpdate}
                             ></TextInput>
                             <Text style={[styles.textError, { fontSize: 7 }]}>{errorUpdate.errorPasswordNew}</Text>
                             <Text style={styles.labelUpdateName}>Confirm password</Text>
                             <TextInput placeholder="type confirm password" style={styles.textUpdateName}
+                                secureTextEntry={true}
                                 onChangeText={(text) => setNewPassUpdateCF(text.trim())}
                                 value={newPassUpdateCF}
                             ></TextInput>
@@ -774,8 +794,8 @@ export default function Me({ route, navigation }) {
                                         nextButton={<Text style={styles.buttonText}>›</Text>}
                                         prevButton={<Text style={styles.buttonText}>‹</Text>}
                                     >
-                                        {listImagePost.map((item, index) => {
-                                            return <Image key={index} resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + item }} style={{ width: '100%', height: '100%' }} />
+                                        {listImagePost.map((item, indexx) => {
+                                            return <Image key={indexx} resizeMode='cover' source={{ uri: 'data:image/jpeg;base64,' + item }} style={{ width: '100%', height: '100%' }} />
                                         })}
                                     </Swiper>
                                 </View>
@@ -832,6 +852,25 @@ export default function Me({ route, navigation }) {
                                                 value={descriptionPost}
                                             />
                                             <Text style={styles.textError}>{errorPost.description}</Text>
+                                        </View>
+                                    </View>
+                                </>
+                                <>
+                                    <View style={styles.boxFrom}>
+                                        <View style={styles.groupText}>
+                                            <Text style={styles.label}>Provincial</Text>
+                                            <View style={{ borderWidth: 1, borderColor: 'tomato' }}>
+                                                <Picker
+                                                    selectedValue={selectedProvincial}
+                                                    onValueChange={(itemValue, itemIndex) =>
+                                                        setSelectedProvincial(itemValue)
+                                                    }>
+                                                    {arrayProvincial.map(function (item,chiSo) {
+                                                        return <Picker.Item key={chiSo} label={item} value={item} />
+                                                    })}
+                                                </Picker>
+                                            </View>
+                                            <Text style={styles.textError}>{errorPost.selectedProvincial}</Text>
                                         </View>
                                     </View>
                                 </>
@@ -936,8 +975,8 @@ export default function Me({ route, navigation }) {
                                                     </View>
                                                     <View style={styles.row1Right}>
                                                         <TouchableOpacity style={{ marginLeft: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-                                                            <Text style={[styles.textNameUse, { marginRight: 5 }]}>report</Text>
-                                                            <Ionicons name='ios-flag' size={15} color='tomato' />
+                                                            <Text style={[styles.textNameUse, { marginRight: 5 }]}>Care</Text>
+                                                            <Ionicons name='heart' size={25} color='#F13F93' />
                                                         </TouchableOpacity>
                                                     </View>
                                                 </View>
@@ -962,8 +1001,9 @@ export default function Me({ route, navigation }) {
                                                             setImageListMyPost(item.listImage),
                                                                 setPriceMyPostUpdate(item.price),
                                                                 setDescriptionMyPostUpdate(item.description),
-                                                                setIndexUpdateMyPost(index)
-                                                            setModalUpdate(true)
+                                                                setIndexUpdateMyPost(index),
+                                                                setSelectedProvincial(item.provincial),
+                                                                setModalUpdate(true)
                                                         }}>
                                                             <Text style={styles.bottomTextChat}>Update</Text>
                                                         </TouchableOpacity>
@@ -1091,6 +1131,25 @@ export default function Me({ route, navigation }) {
                                                                             value={descriptionMyPostUpdate}
                                                                         />
                                                                         <Text style={styles.textError}>{errorMyPostUpdate.description}</Text>
+                                                                    </View>
+                                                                </View>
+                                                            </>
+                                                            <>
+                                                                <View style={styles.boxFrom}>
+                                                                    <View style={styles.groupText}>
+                                                                        <Text style={styles.label}>Provincial</Text>
+                                                                        <View style={{ borderWidth: 1, borderColor: 'tomato' }}>
+                                                                            <Picker
+                                                                                selectedValue={selectedMyProvincial}
+                                                                                onValueChange={(itemValue, itemIndex) =>
+                                                                                    setSelectedMyProvincial(itemValue)
+                                                                                }>
+                                                                                {arrayProvincial.map(function (item, indexVip) {
+                                                                                    return <Picker.Item key={indexVip} label={item} value={item} />
+                                                                                })}
+                                                                            </Picker>
+                                                                        </View>
+                                                                        <Text style={styles.textError}>{errorPost.selectedMyProvincial}</Text>
                                                                     </View>
                                                                 </View>
                                                             </>
@@ -1434,10 +1493,10 @@ const styles = StyleSheet.create({
     },
     // // modal post dang bai
     postNews: {
-        height: windowHeight,
+        height: '100%',
         backgroundColor: '#FFFFFF',
         padding: 10,
-        paddingBottom: 0,
+        paddingBottom: 65,
     },
     boxChooseImage: {
         width: '100%',

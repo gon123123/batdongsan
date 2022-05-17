@@ -8,6 +8,7 @@ import Home from './Tab/Home';
 import Chat from './Tab/Chat';
 import UserBook from './Tab/UserBook';
 import Me from './Tab/Me';
+import BookMark from './Tab/BookMark';
 
 const HomeStack = createNativeStackNavigator();
 function HomesStackScreen({ route }) {
@@ -18,19 +19,27 @@ function HomesStackScreen({ route }) {
     );
 }
 const ChatStack = createNativeStackNavigator();
-function ChatsStackScreen({ route}) {
+function ChatsStackScreen({ route }) {
     return (
         <ChatStack.Navigator>
-            <ChatStack.Screen options={{ headerShown: false }} name="chat" component={Chat} initialParams={route}  />
+            <ChatStack.Screen options={{ headerShown: false }} name="chat" component={Chat} initialParams={route} />
         </ChatStack.Navigator>
     );
 }
 const UserStack = createNativeStackNavigator();
-function UserScreen({ route}) {
+function UserScreen({ route }) {
     return (
         <UserStack.Navigator>
             <UserStack.Screen options={{ headerShown: false }} name="phoneBook" component={UserBook} initialParams={route} />
         </UserStack.Navigator>
+    )
+}
+const BookMarkStack = createNativeStackNavigator();
+function BookMarkScreen({ route }) {
+    return (
+        <BookMarkStack.Navigator>
+            <BookMarkStack.Screen options={{ headerShown: false }} name="bookMark" component={BookMark} initialParams={route} />
+        </BookMarkStack.Navigator>
     )
 }
 const MeStack = createNativeStackNavigator();
@@ -44,7 +53,7 @@ function MeScreen({ route }) {
 }
 
 export default function BottomTabNavigation({ route, navigation }) {
-    const { id, name, email, password, status, avatar , listFriend } = route.params;
+    const { id, name, email, password, status, avatar, listFriend } = route.params;
     // console.log(route);
     var dataUser = {
         id: id,
@@ -75,6 +84,8 @@ export default function BottomTabNavigation({ route, navigation }) {
                     } else if (route.name === 'USER') {
                         iconName = focused ? 'people' : 'people-outline';
                     } else if (route.name === 'ME') {
+                        iconName = focused ? 'ios-person' : 'ios-person-outline';
+                    } else if (route.name === 'BookMark') {
                         iconName = focused ? 'ios-person' : 'ios-person-outline';
                     }
                     // You can return any component that you like here!
@@ -116,6 +127,15 @@ export default function BottomTabNavigation({ route, navigation }) {
                     color: 'white',
                 }
             }} name="USER" component={UserScreen} initialParams={dataUser} />
+            <Tab.Screen options={{
+                headerShown: true, headerStyle: {
+                    backgroundColor: 'tomato',
+                },
+                headerTitleAlign: 'center',
+                headerTitleStyle: {
+                    color: 'white',
+                }
+            }} name="BookMark" component={BookMarkScreen} initialParams={dataUser} />
             <Tab.Screen options={{
                 headerShown: false, headerStyle: {
                     backgroundColor: 'tomato',

@@ -208,6 +208,7 @@ export default function Register({ navigation }) {
                             <View style={styles.groupText}>
                                 <Text style={styles.label}>Password</Text>
                                 <TextInput style={styles.textInput} placeholder='password...'
+                                secureTextEntry={true}
                                     onChangeText={(text) => setPassword(text.trim())}
                                     value={password}
                                 />
@@ -220,6 +221,7 @@ export default function Register({ navigation }) {
                             <View style={styles.groupText}>
                                 <Text style={styles.label}>Password Confirm</Text>
                                 <TextInput style={styles.textInput} placeholder='password confirm...'
+                                secureTextEntry={true}
                                     onChangeText={(text) => setPasswordCF(text.trim())}
                                     value={passwordCF}
                                 />
